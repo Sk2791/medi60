@@ -231,7 +231,7 @@ td.num, th.num{text-align:right;font-variant-numeric:tabular-nums}
 </head>
 <body>
 <div id="root"></div>
-<p class="footer">Prototype for a class presentation. Pharmacies, people, stock and prices are illustrative. Payments, rider dispatch and stock sync are simulated in your browser; open apps sync with each other through this browser only.</p>
+<p class="footer">Prototype for a class presentation. Pharmacies, people, stock and prices are illustrative. Payments, rider dispatch and stock sync are simulated in your browser; open apps sync with each other through a shared cloud database.</p>
 <div id="toastHost"></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -796,10 +796,9 @@ function viewLanding(){
   const steps=[['customer','Customer orders'],['pharmacist','Pharmacist verifies'],['partner','Shop accepts and packs'],['rider','Rider delivers'],['customer','Customer receives']];
   return '<header class="topbar"><div class="top-row"><div class="brand"><div class="brand-mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M7 1h6v6h6v6h-6v6H7v-6H1V7h6z" fill="#fff"/></svg></div><div><h1>Medi60</h1><p>Prescription medicines delivered in 60 minutes · Live prototype</p></div></div><span class="chip '+syncLabel()[0]+'" id="syncChip" style="margin-left:auto">'+esc(syncLabel()[1])+'</span></div></header>'+
     '<main class="desk col" style="gap:20px">'+
-    '<section class="col" style="gap:8px;max-width:760px"><span class="eyebrow">Five apps, one order</span><h2 style="font-size:30px">Open each app on its own tab, laptop or phone</h2><p class="muted" style="margin:0">Each person in your group runs one app. When the customer places an order, it appears in the pharmacist console; once approved it reaches the best partner shop, then a rider, and back to the customer. All apps share one live cloud database, so they can run on different devices signed in to claude.ai.</p></section>'+
+    '<section class="col" style="gap:8px;max-width:760px"><span class="eyebrow">Five apps, one order</span><h2 style="font-size:30px">Open each app on its own tab, laptop or phone</h2><p class="muted" style="margin:0">Each person in your group runs one app. When the customer places an order, it appears in the pharmacist console; once approved it reaches the best partner shop, then a rider, and back to the customer. All apps share one live cloud database, so they can run on different phones and laptops.</p></section>'+
     '<div class="flow">'+steps.map((s,i)=>'<div class="flow-step"><span class="mono small muted">'+(i+1)+'</span><b>'+s[1]+'</b><span class="small muted">'+APPS.find(a=>a.key===s[0]).label+'</span></div>'+(i<steps.length-1?'<span class="flow-arrow" aria-hidden="true">→</span>':'')).join('')+'</div>'+
     '<div class="app-cards">'+APPS.map(a=>'<a class="app-card" href="#'+a.key+'"><span class="eyebrow">'+(a.mobile?'Mobile web app':'Desktop web app')+'</span><h3>'+a.label+'</h3><p class="small muted" style="margin:0">'+a.who+'</p><p style="margin:0">'+a.does+'</p><span class="btn sm primary" style="align-self:flex-start">Open '+a.label+'</span></a>').join('')+'</div>'+
-    '<div class="card pad col" style="max-width:760px"><b>How to set up for the presentation</b><ol class="tips"><li>Open this link on each device or tab (a phone works well for the customer and rider apps). Everyone must be signed in to claude.ai with access to this page.</li><li>Pick a different app on each. The green <b>Cloud sync on</b> badge confirms the live database is connected.</li><li>Use the <b>Ops control tower</b> to set the clock speed, pause while you talk, and reset demo data before you start.</li><li>Without the database (for example, opened offline), tabs on one computer still sync, and any app can switch to the others from its <b>Switch app</b> menu.</li></ol></div>'+
     '</main>';
 }
 
