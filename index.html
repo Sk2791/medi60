@@ -227,6 +227,15 @@ td.num, th.num{text-align:right;font-variant-numeric:tabular-nums}
 .topbar{position:sticky;top:0}
 .top-row h1{font-size:19px}
 @media (max-width:520px){.top-row{padding:10px 14px}.brand p{display:none}}
+.lg-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.lg-card{width:100%;max-width:420px;padding:28px;display:flex;flex-direction:column;gap:14px}
+.lg-phone{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;background:var(--surface);overflow:hidden}
+.lg-phone span{padding:7px 10px;border-right:1px solid var(--line);color:var(--ink);font-size:13.5px;background:var(--surface-2)}
+.lg-phone input{border:0!important;border-radius:0!important}
+.lg-sms{display:flex;flex-direction:column;gap:4px;background:var(--accent-soft);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--ink)}
+.lg-demo{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px dashed var(--line);border-radius:10px;padding:10px 12px;font-size:12.5px}
+.lg-err{color:var(--red);font-size:12.5px;margin:0}
+.lg-card a{color:var(--accent)}
 </style>
 </head>
 <body>
@@ -470,6 +479,85 @@ const local={
 };
 function readHash(){ const h=(location.hash||'').replace('#',''); local.app=APPS.some(a=>a.key===h)?h:null; }
 readHash();
+
+/* ===================== Sign-in (demo) ===================== */
+/* Prototype sign-in: customers use phone + one-time code (shown on screen as a simulated SMS);
+   staff use a staff ID + password. Each sign-in opens only that role's app, on this browser.
+   Production would use Firebase Authentication (real SMS OTP) with role checks in the database rules. */
+const AUTH_KEY='medi60-auth-v1';
+const STAFF={pharmacist:{id:'PH-1024',label:'Pharmacist ID'}, partner:{id:'SHOP-01',label:'Partner ID'}, rider:{id:'RIDER-01',label:'Rider ID'}, ops:{id:'OPS-01',label:'Ops staff ID'}};
+const DEMO_PASS='medi60';
+let auth={}; try{ auth=JSON.parse(localStorage.getItem(AUTH_KEY)||'{}')||{}; }catch(e){ auth={}; }
+function saveAuth(){ try{ localStorage.setItem(AUTH_KEY,JSON.stringify(auth)); }catch(e){} }
+function signedIn(app){ return !!(auth[app]&&auth[app].id); }
+if(auth.partner&&auth.partner.shop) local.shop=auth.partner.shop;
+if(auth.rider&&auth.rider.rider) local.rider=auth.rider.rider;
+const login={phone:'',otp:null,tries:0,err:''};
+function resetLogin(){ login.phone=''; login.otp=null; login.tries=0; login.err=''; }
+function fmtPhone(p){ return '+91 '+p.slice(0,5)+' '+p.slice(5); }
+function inVal(id){ const el=document.getElementById(id); return el?el.value:''; }
+function setVal(id,v){ const el=document.getElementById(id); if(el) el.value=v; }
+function viewLogin(app){
+  const a=APPS.find(x=>x.key===app);
+  const err=login.err?'<p class="lg-err" role="alert">'+esc(login.err)+'</p>':'';
+  let body;
+  if(app==='customer'){
+    if(!login.otp){
+      body='<label class="field">Mobile number<div class="lg-phone"><span>+91</span><input id="lgPhone" data-keep inputmode="numeric" autocomplete="tel" maxlength="10" placeholder="10-digit mobile number"></div></label>'+err+
+        '<button class="btn primary block" data-a="lg-send" data-primary>Send OTP</button>'+
+        '<button class="btn ghost block" data-a="lg-demo-phone">Use demo number</button>';
+    } else {
+      body='<p class="small muted" style="margin:0">Code sent to <b>'+fmtPhone(login.phone)+'</b> · <a href="#" data-a="lg-change">Change</a></p>'+
+        '<div class="lg-sms" role="status"><span class="eyebrow">SMS · simulated for the demo</span><span>Medi60: <b class="mono">'+login.otp+'</b> is your login code. Do not share it with anyone.</span></div>'+
+        '<label class="field">Enter the 6-digit code<input id="lgOtp" data-keep inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code"></label>'+err+
+        '<button class="btn primary block" data-a="lg-verify" data-primary>Verify and sign in</button>'+
+        '<button class="btn ghost block" data-a="lg-send">Resend code</button>';
+    }
+  } else {
+    const st=STAFF[app];
+    const pick=app==='partner'?'<label class="field">Your pharmacy<select id="lgShop" data-keep>'+PARTNERS.map(p=>'<option value="'+p.id+'" '+(p.id===local.shop?'selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></label>'
+      :app==='rider'?'<label class="field">Rider<select id="lgRider" data-keep>'+RIDERS.map(r=>'<option value="'+r.id+'" '+(r.id===local.rider?'selected':'')+'>'+esc(r.name)+'</option>').join('')+'</select></label>':'';
+    body='<label class="field">'+st.label+'<input id="lgUser" data-keep autocomplete="username" placeholder="'+st.id+'"></label>'+
+      '<label class="field">Password<input id="lgPass" data-keep type="password" autocomplete="current-password"></label>'+pick+err+
+      '<button class="btn primary block" data-a="lg-staff" data-primary>Sign in</button>'+
+      '<div class="lg-demo"><span><span class="eyebrow">Demo account</span><br>ID <b class="mono">'+st.id+'</b> · Password <b class="mono">'+DEMO_PASS+'</b></span><button class="btn sm" data-a="lg-fill">Fill in</button></div>';
+  }
+  return '<main class="lg-wrap"><div class="card lg-card">'+
+    '<div class="brand"><div class="brand-mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M7 1h6v6h6v6h-6v6H7v-6H1V7h6z" fill="#fff"/></svg></div><div><h1>Medi60</h1><p>Prescription medicines in 60 minutes</p></div></div>'+
+    '<div><span class="eyebrow">'+(a.mobile?'Mobile web app':'Desktop web app')+'</span><h2 style="font-size:22px;margin:4px 0 2px">Sign in to the '+esc(a.label)+'</h2><p class="small muted" style="margin:0">'+esc(a.who)+'</p></div>'+
+    body+
+    '<p class="small muted" style="margin:4px 0 0">Demo sign-in for this prototype. A real launch would use Firebase Authentication with SMS OTP and role-based access.</p>'+
+    '<a class="small" href="#home">← All apps</a>'+
+    '</div></main>';
+}
+function loginAction(act){
+  const app=local.app;
+  if(act==='lg-demo-phone'){ setVal('lgPhone','9876543210'); login.err=''; return; }
+  if(act==='lg-change'){ resetLogin(); return; }
+  if(act==='lg-send'){
+    const ph=(document.getElementById('lgPhone')?inVal('lgPhone'):login.phone).replace(/\D/g,'');
+    if(!/^[6-9]\d{9}$/.test(ph)){ login.err='Enter a valid 10-digit Indian mobile number'; return; }
+    login.phone=ph; login.otp=String(100000+Math.floor(Math.random()*900000)); login.tries=0; login.err=''; setVal('lgOtp',''); return;
+  }
+  if(act==='lg-verify'){
+    const v=inVal('lgOtp').replace(/\D/g,'');
+    if(v===login.otp){ auth.customer={id:fmtPhone(login.phone),at:Date.now()}; saveAuth(); resetLogin(); toast('Signed in as '+auth.customer.id); return; }
+    login.tries++;
+    if(login.tries>=3){ login.otp=null; login.err='Too many wrong codes. Request a new code.'; }
+    else login.err='Wrong code. '+(3-login.tries)+' '+(3-login.tries===1?'try':'tries')+' left.';
+    setVal('lgOtp',''); return;
+  }
+  if(act==='lg-fill'){ setVal('lgUser',STAFF[app].id); setVal('lgPass',DEMO_PASS); login.err=''; return; }
+  if(act==='lg-staff'){
+    const u=inVal('lgUser').trim().toUpperCase(), pw=inVal('lgPass');
+    if(u!==STAFF[app].id||pw!==DEMO_PASS){ login.err='Staff ID or password is incorrect'; setVal('lgPass',''); return; }
+    auth[app]={id:STAFF[app].id,at:Date.now()};
+    if(app==='partner'){ local.shop=inVal('lgShop')||local.shop; auth.partner.shop=local.shop; auth.partner.id=STAFF.partner.id+' · '+partner(local.shop).name; }
+    if(app==='rider'){ local.rider=inVal('lgRider')||local.rider; auth.rider.rider=local.rider; auth.rider.id=STAFF.rider.id+' · '+RIDERS.find(r=>r.id===local.rider).name; }
+    saveAuth(); resetLogin(); toast('Signed in'); return;
+  }
+  if(act==='signout'){ delete auth[app]; saveAuth(); resetLogin(); toast('Signed out'); return; }
+}
 
 /* ===================== Helpers ===================== */
 function fmt(min){ min=Math.max(0,min); const m=Math.floor(min), s=Math.floor((min-m)*60); return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
@@ -788,7 +876,7 @@ function header(app){
   const a=APPS.find(x=>x.key===app);
   const l=syncLabel(); const sync='<span class="chip '+l[0]+'" id="syncChip" title="Changes made in one app appear in the others within a second or two">'+esc(l[1])+'</span>';
   return '<header class="topbar"><div class="top-row"><div class="brand"><div class="brand-mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M7 1h6v6h6v6h-6v6H7v-6H1V7h6z" fill="#fff"/></svg></div><div><h1>Medi60 <span class="muted" style="font-weight:500">· '+a.label+'</span></h1><p>'+a.who+'</p></div></div>'+
-    '<div class="row" style="margin-left:auto;gap:10px;flex-wrap:wrap">'+sync+'<label class="small muted" for="appSwitch">Switch app</label><select id="appSwitch" class="sel">'+APPS.map(x=>'<option value="'+x.key+'" '+(x.key===app?'selected':'')+'>'+x.label+'</option>').join('')+'<option value="">All apps</option></select></div></div></header>';
+    '<div class="row" style="margin-left:auto;gap:10px;flex-wrap:wrap">'+sync+'<span class="small muted" title="Signed in">'+esc((auth[app]&&auth[app].id)||'')+'</span><button class="btn sm ghost" data-a="signout">Sign out</button><label class="small muted" for="appSwitch">Switch app</label><select id="appSwitch" class="sel">'+APPS.map(x=>'<option value="'+x.key+'" '+(x.key===app?'selected':'')+'>'+x.label+'</option>').join('')+'<option value="">All apps</option></select></div></div></header>';
 }
 
 /* ===================== Landing ===================== */
@@ -796,7 +884,7 @@ function viewLanding(){
   const steps=[['customer','Customer orders'],['pharmacist','Pharmacist verifies'],['partner','Shop accepts and packs'],['rider','Rider delivers'],['customer','Customer receives']];
   return '<header class="topbar"><div class="top-row"><div class="brand"><div class="brand-mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M7 1h6v6h6v6h-6v6H7v-6H1V7h6z" fill="#fff"/></svg></div><div><h1>Medi60</h1><p>Prescription medicines delivered in 60 minutes · Live prototype</p></div></div><span class="chip '+syncLabel()[0]+'" id="syncChip" style="margin-left:auto">'+esc(syncLabel()[1])+'</span></div></header>'+
     '<main class="desk col" style="gap:20px">'+
-    '<section class="col" style="gap:8px;max-width:760px"><span class="eyebrow">Five apps, one order</span><h2 style="font-size:30px">Open each app on its own tab, laptop or phone</h2><p class="muted" style="margin:0">Each person in your group runs one app. When the customer places an order, it appears in the pharmacist console; once approved it reaches the best partner shop, then a rider, and back to the customer. All apps share one live cloud database, so they can run on different phones and laptops.</p></section>'+
+    '<section class="col" style="gap:8px;max-width:760px"><span class="eyebrow">Five apps, one order</span><h2 style="font-size:30px">Open each app on its own tab, laptop or phone</h2><p class="muted" style="margin:0">Each person in your group runs one app. When the customer places an order, it appears in the pharmacist console; once approved it reaches the best partner shop, then a rider, and back to the customer. All apps share one live cloud database, so they can run on different phones and laptops. Each app asks you to sign in; demo accounts are shown on every sign-in screen.</p></section>'+
     '<div class="flow">'+steps.map((s,i)=>'<div class="flow-step"><span class="mono small muted">'+(i+1)+'</span><b>'+s[1]+'</b><span class="small muted">'+APPS.find(a=>a.key===s[0]).label+'</span></div>'+(i<steps.length-1?'<span class="flow-arrow" aria-hidden="true">→</span>':'')).join('')+'</div>'+
     '<div class="app-cards">'+APPS.map(a=>'<a class="app-card" href="#'+a.key+'"><span class="eyebrow">'+(a.mobile?'Mobile web app':'Desktop web app')+'</span><h3>'+a.label+'</h3><p class="small muted" style="margin:0">'+a.who+'</p><p style="margin:0">'+a.does+'</p><span class="btn sm primary" style="align-self:flex-start">Open '+a.label+'</span></a>').join('')+'</div>'+
     '</main>';
@@ -1039,13 +1127,13 @@ function phaseCard(o){
 /* ===================== Render loop ===================== */
 function render(){
   const app=local.app;
-  const html=!app?viewLanding():{customer:viewCustomer,pharmacist:viewPharmacist,partner:viewPartner,rider:viewRider,ops:viewOps}[app]();
+  const html=!app?viewLanding():!signedIn(app)?viewLogin(app):{customer:viewCustomer,pharmacist:viewPharmacist,partner:viewPartner,rider:viewRider,ops:viewOps}[app]();
   const ae=document.activeElement, id=ae&&ae.id, caret=ae&&ae.selectionStart!=null?ae.selectionStart:null;
   const keep={}; document.querySelectorAll('[data-keep]').forEach(el=>{ if(el.id) keep[el.id]=el.type==='checkbox'?{c:el.checked}:{v:el.value}; });
   document.getElementById('root').innerHTML=html;
   Object.keys(keep).forEach(k=>{ const el=document.getElementById(k); if(!el||el.disabled) return; if('c' in keep[k]) el.checked=keep[k].c; else el.value=keep[k].v; });
   if(id){ const el=document.getElementById(id); if(el&&(el.tagName==='INPUT'||el.tagName==='SELECT')){ el.focus(); if(caret!=null&&el.setSelectionRange&&(el.type==='text'||el.type==='search'||!el.type)){ try{el.setSelectionRange(caret,caret);}catch(e){} } } }
-  document.title=app?'Medi60 · '+APPS.find(a=>a.key===app).label:'Medi60 Prototype';
+  document.title=app?'Medi60 · '+APPS.find(a=>a.key===app).label+(signedIn(app)?'':' · Sign in'):'Medi60 Prototype';
 }
 function tickUI(){
   document.querySelectorAll('[data-tick]').forEach(el=>{
@@ -1078,6 +1166,7 @@ document.addEventListener('click',e=>{
   const pt=e.target.closest('[data-ptab]'); if(pt){ local.shopTab=pt.dataset.ptab; dirty=true; return; }
   const a=e.target.closest('[data-a]'); if(!a) return;
   const act=a.dataset.a, id=a.dataset.id;
+  if(act.startsWith('lg-')||act==='signout'){ e.preventDefault(); loginAction(act); dirty=true; return; }
   switch(act){
     case 'c-home': local.custView='home'; local.trackId=null; break;
     case 'c-upload': local.custView='upload'; local.trackId=null; break;
@@ -1148,7 +1237,8 @@ document.addEventListener('change',e=>{
   else if(t.dataset&&t.dataset.field&&t.tagName==='SELECT'){ const oid=t.dataset.id; execField({id:oid,key:t.dataset.field,val:t.value}); dirty=false; const box=document.getElementById('pharmChecks'), o=getOrder(oid); if(box&&o) box.innerHTML=pharmChecks(o); }
   else if(t.id==='rxFile'&&t.files&&t.files[0]){ const f=t.files[0]; shrinkImage(f, data=>{ local.rxAttach={kind:'upload',data,name:f.name,size:f.size}; local.custView='cart'; toast('Prescription photo attached'); dirty=true; }); }
 });
-window.addEventListener('hashchange',()=>{ readHash(); window.scrollTo({top:0}); dirty=true; });
+document.addEventListener('keydown',e=>{ if(e.key!=='Enter') return; const t=e.target; if(!t||!/^lg(Phone|Otp|User|Pass)$/.test(t.id||'')) return; e.preventDefault(); const b=document.querySelector('.lg-card [data-primary]'); if(b) b.click(); });
+window.addEventListener('hashchange',()=>{ readHash(); resetLogin(); window.scrollTo({top:0}); dirty=true; });
 frame(); setInterval(frame,200);
 })();
 
