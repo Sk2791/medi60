@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Medi60 Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Caveat:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a demo control bar on top, the active role's app in the centre stage, and a live "order journey" rail on the right that follows one order through all five roles. */
+:root{
+  --bg:#F2F5F3; --surface:#FFFFFF; --surface-2:#F7FAF8; --ink:#10221C; --muted:#5A6B65; --line:#D9E2DE;
+  --accent:#0A7A62; --accent-ink:#FFFFFF; --accent-soft:#DFF0EA;
+  --amber:#B87512; --amber-soft:#FBEFD9; --red:#BE3B33; --red-soft:#F8E1DF; --green:#1F8A4E; --green-soft:#DDF2E5;
+  --paper:#FFFDF5; --paper-ink:#1D2A4A; --paper-line:#E7E1CC; --hand:#1E3A8A;
+  --sea:#D7E8EE; --land:#EEF2EE; --road:#FFFFFF; --road-edge:#D2DAD6;
+  --display:'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+  --body:'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --mono:'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --script:'Caveat', 'Segoe Print', cursive;
+  --radius:12px;
+  --shadow:0 1px 2px rgba(16,34,28,.06), 0 6px 24px rgba(16,34,28,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0C1512; --surface:#13201B; --surface-2:#172620; --ink:#E4EEEA; --muted:#93A69F; --line:#25362F;
+    --accent:#35C29E; --accent-ink:#06231B; --accent-soft:#12372D;
+    --amber:#E5A440; --amber-soft:#3A2B11; --red:#EF6A61; --red-soft:#3C1B19; --green:#4FC584; --green-soft:#133524;
+    --sea:#12303A; --land:#182822; --road:#22362F; --road-edge:#2C4239;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 28px rgba(0,0,0,.35);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0C1512; --surface:#13201B; --surface-2:#172620; --ink:#E4EEEA; --muted:#93A69F; --line:#25362F;
+  --accent:#35C29E; --accent-ink:#06231B; --accent-soft:#12372D;
+  --amber:#E5A440; --amber-soft:#3A2B11; --red:#EF6A61; --red-soft:#3C1B19; --green:#4FC584; --green-soft:#133524;
+  --sea:#12303A; --land:#182822; --road:#22362F; --road-edge:#2C4239;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 28px rgba(0,0,0,.35);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--body);-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3,h4{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+
+/* Top bar */
+.topbar{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-row{display:flex;align-items:center;gap:16px;padding:10px 20px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;min-width:max-content}
+.brand-mark{width:34px;height:34px;border-radius:10px;background:var(--accent);display:grid;place-items:center}
+.brand h1{font-size:20px;line-height:1}
+.brand p{margin:2px 0 0;font-size:11.5px;color:var(--muted)}
+.roles{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:3px;flex-wrap:wrap}
+.role-tab{border:0;background:transparent;padding:7px 12px;border-radius:8px;font-weight:500;color:var(--muted);position:relative;display:flex;align-items:center;gap:6px}
+.role-tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.role-tab .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 3px var(--amber-soft)}
+.sla-pill{margin-left:auto;display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);font-weight:500}
+.sla-pill .big{font-family:var(--mono);font-size:16px;font-weight:600}
+.sla-pill.good{border-color:var(--green);background:var(--green-soft)}
+.sla-pill.warn{border-color:var(--amber);background:var(--amber-soft)}
+.sla-pill.bad{border-color:var(--red);background:var(--red-soft)}
+.demo-row{display:flex;align-items:center;gap:12px;padding:8px 20px;border-top:1px dashed var(--line);background:var(--surface-2);flex-wrap:wrap;font-size:13px}
+.demo-row label{display:flex;align-items:center;gap:6px;color:var(--muted)}
+.demo-row select{border:1px solid var(--line);border-radius:8px;padding:5px 8px;background:var(--surface)}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:5px 9px;font-size:12.5px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.switch{display:flex;align-items:center;gap:6px;color:var(--muted);cursor:pointer;user-select:none}
+.switch input{appearance:none;width:32px;height:18px;border-radius:999px;background:var(--line);position:relative;cursor:pointer;transition:background .2s}
+.switch input::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--surface);transition:left .2s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.switch input:checked{background:var(--accent)}
+.switch input:checked::after{left:16px}
+.demo-tag{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:8px 14px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:transform .05s, background .15s}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--red);border-color:var(--red)}
+.btn.ghost{background:transparent}
+.btn.sm{padding:5px 10px;font-size:12.5px;border-radius:8px}
+.btn.block{width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* Main layout */
+.main{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px;padding:20px;max-width:1500px;margin:0 auto}
+@media (max-width:1100px){.main{grid-template-columns:1fr}}
+.stage-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.stage-head h2{font-size:22px}
+.stage-head p{margin:4px 0 0;color:var(--muted);max-width:70ch}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius)}
+.pad{padding:16px}
+.row{display:flex;gap:12px;align-items:center}
+.col{display:flex;flex-direction:column;gap:12px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:500;border:1px solid var(--line);background:var(--surface-2);white-space:nowrap}
+.chip.ok{color:var(--green);border-color:transparent;background:var(--green-soft)}
+.chip.warn{color:var(--amber);border-color:transparent;background:var(--amber-soft)}
+.chip.bad{color:var(--red);border-color:transparent;background:var(--red-soft)}
+.chip.acc{color:var(--accent);border-color:transparent;background:var(--accent-soft)}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+/* Device frames */
+.devices{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
+.phone{width:375px;max-width:100%;height:740px;border-radius:38px;border:10px solid #1a2421;background:var(--bg);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;flex-shrink:0}
+.phone-status{display:flex;justify-content:space-between;padding:8px 18px 4px;font-size:12px;font-weight:600;background:var(--surface)}
+.phone-body{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+.app-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 14px 10px;background:var(--surface);border-bottom:1px solid var(--line)}
+.app-bar b{font-family:var(--display);font-size:17px}
+.tablet{width:820px;max-width:100%;min-height:600px;border-radius:24px;border:10px solid #1a2421;background:var(--bg);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
+.side-notes{flex:1;min-width:240px;max-width:420px;display:flex;flex-direction:column;gap:12px}
+.note{border-left:3px solid var(--accent);padding:4px 0 4px 12px}
+.note b{display:block;font-family:var(--display);font-size:14.5px;margin-bottom:2px}
+.note p{margin:0;color:var(--muted)}
+
+/* Prescription paper: the signature element */
+.rx-paper{background:var(--paper);color:var(--paper-ink);border:1px solid var(--paper-line);border-radius:6px;padding:18px 18px 14px;position:relative;box-shadow:0 2px 0 var(--paper-line),0 10px 30px rgba(29,42,74,.08);overflow:hidden;background-image:repeating-linear-gradient(transparent 0 27px, rgba(29,42,74,.05) 27px 28px)}
+.rx-head{border-bottom:2px solid var(--paper-ink);padding-bottom:8px;margin-bottom:12px;display:flex;flex-direction:column;gap:6px}
+.rx-doc{font-family:var(--display);font-size:18px;font-weight:700}
+.rx-qual,.rx-clinic{font-size:11.5px;opacity:.8}
+.rx-reg{font-family:var(--mono);font-size:11.5px}
+.rx-meta{display:flex;justify-content:space-between;gap:10px;font-size:12px;margin-bottom:6px;flex-wrap:wrap}
+.hand{font-family:var(--script);color:var(--hand);font-size:21px;line-height:1.1}
+.rx-symbol{font-family:Georgia, 'Times New Roman', serif;font-size:34px;font-weight:700;line-height:1;margin:4px 0}
+.rx-lines{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.rx-sign{display:flex;justify-content:flex-end;margin-top:6px}
+.ai-field{position:relative;border-radius:4px;transition:box-shadow .2s}
+.show-ai .ai-field{box-shadow:0 0 0 2px var(--accent)}
+.show-ai .ai-field.missing{box-shadow:0 0 0 2px var(--red);background:var(--red-soft)}
+.show-ai .ai-field::after{content:attr(data-tag);position:absolute;right:-2px;top:-9px;font:600 9.5px/1 var(--mono);background:var(--accent);color:var(--accent-ink);padding:2px 4px;border-radius:3px;white-space:nowrap}
+.show-ai .ai-field.missing::after{background:var(--red);color:#fff}
+.scanning .rx-paper::before{content:"";position:absolute;left:0;right:0;height:46px;top:-46px;background:linear-gradient(transparent, rgba(10,122,98,.28), transparent);animation:scan 1.5s ease-in-out infinite;z-index:2}
+@keyframes scan{to{top:100%}}
+
+/* Journey rail */
+.rail{display:flex;flex-direction:column;gap:14px;position:sticky;top:120px;align-self:start}
+@media (max-width:1100px){.rail{position:static}}
+.journey{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.journey li{display:grid;grid-template-columns:52px 16px 1fr;gap:8px;padding:5px 0;align-items:start}
+.journey .t{font-family:var(--mono);font-size:11.5px;color:var(--muted);text-align:right;padding-top:1px}
+.journey .node{width:12px;height:12px;border-radius:50%;margin-top:3px;background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.journey .node.sys{background:var(--muted);box-shadow:0 0 0 3px var(--line)}
+.journey .node.warn{background:var(--amber);box-shadow:0 0 0 3px var(--amber-soft)}
+.journey .node.bad{background:var(--red);box-shadow:0 0 0 3px var(--red-soft)}
+.journey .node.next{background:transparent;border:2px dashed var(--line);box-shadow:none}
+.journey .what{font-weight:500}
+.journey .who{font-size:11.5px;color:var(--muted)}
+.journey li.upcoming .what{color:var(--muted);font-weight:400}
+.phasebar{position:relative;height:30px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden;display:flex}
+.phasebar .seg{height:100%;border-right:1px solid var(--surface);display:flex;align-items:center;justify-content:center;font-size:10px;font-family:var(--mono);color:var(--accent-ink);overflow:hidden;white-space:nowrap}
+.phase-ticks{position:relative;height:16px;font-family:var(--mono);font-size:10px;color:var(--muted)}
+.phase-ticks span{position:absolute;transform:translateX(-50%)}
+.phase-marker{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);transition:left .2s linear}
+.waiting{border:1px dashed var(--amber);background:var(--amber-soft);border-radius:10px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+
+/* Tables */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-weight:500;color:var(--muted);text-align:left;font-size:11.5px;letter-spacing:.02em;padding:7px 8px;border-bottom:1px solid var(--line)}
+td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+td.num, th.num{text-align:right;font-variant-numeric:tabular-nums}
+.table-wrap{overflow-x:auto}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{padding:12px 14px}
+.kpi .v{font-family:var(--display);font-size:26px;font-weight:700;margin-top:2px}
+.kpi .d{font-size:11.5px}
+
+/* Misc */
+.list{display:flex;flex-direction:column;gap:8px}
+.item{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.item .name{font-weight:600}
+.timer-ring{--p:1;width:74px;height:74px;border-radius:50%;background:conic-gradient(var(--amber) calc(var(--p)*360deg), var(--line) 0);display:grid;place-items:center;flex-shrink:0}
+.timer-ring span{width:58px;height:58px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-family:var(--mono);font-weight:600;font-size:15px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:500;z-index:50;box-shadow:var(--shadow);max-width:90vw}
+.sheet{border:2px solid var(--amber);background:var(--surface);border-radius:14px;padding:14px}
+.otp{font-family:var(--mono);font-size:30px;font-weight:600;letter-spacing:.3em}
+.grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.grid-3{display:grid;grid-template-columns:minmax(220px,260px) minmax(300px,1fr) minmax(280px,340px);gap:16px}
+@media (max-width:1250px){.grid-3{grid-template-columns:1fr 1fr}}
+@media (max-width:760px){.grid-3{grid-template-columns:1fr}}
+.dropzone{border:2px dashed var(--line);border-radius:14px;padding:18px;text-align:center;background:var(--surface)}
+.map-wrap svg{display:block;width:100%;height:auto;border-radius:12px;border:1px solid var(--line)}
+.steps-mini{display:flex;flex-direction:column;gap:10px}
+.steps-mini div{display:flex;align-items:center;gap:10px}
+.steps-mini i{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:12px;font-weight:600;border:2px solid var(--line);color:var(--muted);flex-shrink:0}
+.steps-mini .done i{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.steps-mini .now i{border-color:var(--accent);color:var(--accent)}
+.steps-mini .now span{font-weight:600}
+.footer{max-width:1500px;margin:0 auto;padding:0 20px 24px;color:var(--muted);font-size:12px}
+@media (prefers-reduced-motion: reduce){
+  *{transition:none !important;animation:none !important}
+}
+
+.field{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted)}
+.field input,.field select,.search-input{border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:var(--surface);color:var(--ink);font-size:13.5px;width:100%}
+.qty{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.qty button{border:0;background:transparent;width:28px;height:28px;font-size:15px}
+.qty span{min-width:22px;text-align:center;font-variant-numeric:tabular-nums}
+.rx-img{max-width:100%;border-radius:8px;border:1px solid var(--line);display:block}
+.tips{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.tips li{color:var(--muted)}
+.tips b{color:var(--ink)}
+.empty{color:var(--muted);text-align:center;padding:20px}
+
+#root{min-height:100%}
+.desk{max-width:1440px;margin:0 auto;padding:20px;width:100%}
+.mobile-col{max-width:460px;margin:0 auto;padding:18px 16px 40px;display:flex;flex-direction:column;gap:12px;width:100%}
+.mobile-col h2{font-size:22px}
+.desk h2{font-size:24px}
+.sel{border:1px solid var(--line);border-radius:8px;padding:5px 8px;background:var(--surface);color:var(--ink)}
+.flow{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap}
+.flow-step{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);min-width:150px;flex:1}
+.flow-arrow{align-self:center;color:var(--muted);font-size:20px}
+.app-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.app-card{display:flex;flex-direction:column;gap:8px;padding:18px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);text-decoration:none;transition:border-color .15s, box-shadow .15s}
+.app-card:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.app-card h3{font-size:19px}
+.ops-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(320px,1fr);gap:16px;align-items:start}
+@media (max-width:1100px){.ops-grid{grid-template-columns:1fr}}
+.topbar{position:sticky;top:0}
+.top-row h1{font-size:19px}
+@media (max-width:520px){.top-row{padding:10px 14px}.brand p{display:none}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<p class="footer">Prototype for a class presentation. Pharmacies, people, stock and prices are illustrative. Payments, rider dispatch and stock sync are simulated in your browser; open apps sync with each other through this browser only.</p>
+<div id="toastHost"></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="db-shim.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* ===================== Static data ===================== */
+const MEDS = {
+  glycomet:{brand:'Glycomet 500 SR', salt:'Metformin', strength:'500 mg', form:'Tablet', pack:'Strip of 10', mrp:22, rx:true},
+  amlokind:{brand:'Amlokind 5', salt:'Amlodipine', strength:'5 mg', form:'Tablet', pack:'Strip of 15', mrp:28, rx:true},
+  pan40:{brand:'Pan 40', salt:'Pantoprazole', strength:'40 mg', form:'Tablet', pack:'Strip of 15', mrp:155, rx:true},
+  telma40:{brand:'Telma 40', salt:'Telmisartan', strength:'40 mg', form:'Tablet', pack:'Strip of 15', mrp:240, rx:true},
+  telmiGen:{brand:'Telmisartan 40 (generic)', salt:'Telmisartan', strength:'40 mg', form:'Tablet', pack:'Strip of 15', mrp:96, rx:true},
+  atorva10:{brand:'Atorva 10', salt:'Atorvastatin', strength:'10 mg', form:'Tablet', pack:'Strip of 15', mrp:118, rx:true},
+  azithral:{brand:'Azithral 500', salt:'Azithromycin', strength:'500 mg', form:'Tablet', pack:'Strip of 5', mrp:119, rx:true},
+  dolo:{brand:'Dolo 650', salt:'Paracetamol', strength:'650 mg', form:'Tablet', pack:'Strip of 15', mrp:34, rx:false},
+  cetzine:{brand:'Cetzine 10', salt:'Cetirizine', strength:'10 mg', form:'Tablet', pack:'Strip of 10', mrp:20, rx:false},
+  electral:{brand:'Electral ORS', salt:'Oral rehydration salts', strength:'21.8 g', form:'Sachet', pack:'1 sachet', mrp:22, rx:false},
+  shelcal:{brand:'Shelcal 500', salt:'Calcium + Vitamin D3', strength:'500 mg', form:'Tablet', pack:'Strip of 15', mrp:130, rx:false},
+  claribid:{brand:'Claribid 500', salt:'Clarithromycin', strength:'500 mg', form:'Tablet', pack:'Strip of 4', mrp:296, rx:true}
+};
+// Known interactions the pharmacist must clear before approving (illustrative list for the prototype)
+const INTERACTIONS=[{a:'Atorvastatin', b:'Clarithromycin', note:'clarithromycin raises atorvastatin levels, so the risk of muscle damage goes up'}];
+const SCHEDULE_X=[]; // narcotic / psychotropic medicines: never sold online, none are in the catalogue
+const today=new Date();
+function isoDaysAgo(n){ const d=new Date(today); d.setDate(d.getDate()-n); return d.toISOString().slice(0,10); }
+function fmtDate(iso){ if(!iso) return '—'; const p=iso.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+function monthLabel(m){ return new Date(today.getFullYear(), today.getMonth()+m, 1).toLocaleDateString('en-GB',{month:'short',year:'numeric'}); }
+const SAMPLES={
+  A:{id:'RX-7781', label:'Diabetes and BP', doctor:'Dr. Anjali Mehta', quals:'MBBS, MD (General Medicine)', clinic:'Mehta Clinic, Lokhandwala, Andheri (W)', reg:'MMC-2011/04/1234', patient:'Rahul Sharma', age:'46 / M', date:isoDaysAgo(3), sub:'allowed',
+     items:[{med:'glycomet',line:'Tab Glycomet 500 SR — 1-0-1 × 30 days',qty:6,conf:96},{med:'amlokind',line:'Tab Amlokind 5 — 0-0-1 × 30 days',qty:2,conf:93},{med:'pan40',line:'Tab Pan 40 — 1-0-0 before breakfast × 15 days',qty:1,conf:98}]},
+  B:{id:'RX-7802', label:'Heart care', doctor:'Dr. Suresh Iyer', quals:'MBBS, DNB (Cardiology)', clinic:'Heartline Clinic, Four Bungalows, Andheri (W)', reg:'MMC-2008/11/5521', patient:'Meena Kulkarni', age:'62 / F', date:isoDaysAgo(10), sub:'allowed',
+     items:[{med:'telma40',line:'Tab Telma 40 — 1-0-0 × 30 days',qty:2,conf:95},{med:'atorva10',line:'Tab Atorva 10 — 0-0-1 × 30 days',qty:2,conf:94}]},
+  C:{id:'RX-7810', label:'Fever (older paper)', doctor:'Dr. R. Desai', quals:'MBBS', clinic:'No clinic stamp', reg:'', patient:'Arjun Patil', age:'29 / M', date:isoDaysAgo(245), sub:'allowed',
+     items:[{med:'azithral',line:'Tab Azithral 500 — 1-0-0 × 3 days',qty:1,conf:88},{med:'dolo',line:'Tab Dolo 650 — SOS for fever',qty:1,conf:91}]},
+  D:{id:'RX-7815', label:'Heart care · no substitutes', doctor:'Dr. Suresh Iyer', quals:'MBBS, DNB (Cardiology)', clinic:'Heartline Clinic, Four Bungalows, Andheri (W)', reg:'MMC-2008/11/5521', patient:'Meena Kulkarni', age:'62 / F', date:isoDaysAgo(2), sub:'no',
+     items:[{med:'telma40',line:'Tab Telma 40 — 1-0-0 × 30 days',qty:2,conf:95},{med:'atorva10',line:'Tab Atorva 10 — 0-0-1 × 30 days',qty:2,conf:94}]},
+  E:{id:'RX-7822', label:'Chest infection + cholesterol', doctor:'Dr. Anjali Mehta', quals:'MBBS, MD (General Medicine)', clinic:'Mehta Clinic, Lokhandwala, Andheri (W)', reg:'MMC-2011/04/1234', patient:'Rahul Sharma', age:'46 / M', date:isoDaysAgo(1), sub:'allowed',
+     items:[{med:'claribid',line:'Tab Claribid 500 — 1-0-1 × 7 days',qty:4,conf:92},{med:'atorva10',line:'Tab Atorva 10 — 0-0-1 × 30 days',qty:2,conf:94}]}
+};
+const PATIENTS=['Rahul Sharma','Meena Kulkarni','Arjun Patil'];
+const FAMILY_NOTE={'Rahul Sharma':'you','Meena Kulkarni':'mother','Arjun Patil':'brother-in-law'};
+const PARTNERS=[
+  {id:'P1', name:'Shree Sai Medicals', area:'Andheri (W)', km:0.9, rating:4.7, cold:true, x:286, y:194},
+  {id:'P2', name:'Lokhandwala Health Chemist', area:'Lokhandwala', km:1.4, rating:4.5, cold:false, x:224, y:140},
+  {id:'P3', name:'Versova Care Pharmacy', area:'Versova', km:2.2, rating:4.6, cold:true, x:196, y:118},
+  {id:'P4', name:'Jogeshwari Medico', area:'Jogeshwari (W)', km:3.1, rating:4.2, cold:false, x:300, y:78},
+  {id:'P5', name:'Juhu Wellness Chemist', area:'Juhu', km:3.6, rating:4.8, cold:true, x:236, y:282},
+  {id:'P6', name:'Bandra Lifeline Medicals', area:'Bandra (W)', km:7.8, rating:4.6, cold:true, x:262, y:392}
+];
+const BASE_ACCEPT={P1:0.94,P2:0.89,P3:0.91,P4:0.82,P5:0.96,P6:0.90};
+const INV_BASE={
+  P1:{glycomet:[18,'GL24K118',16], amlokind:[12,'AMK2409',20], pan40:[9,'PN40A77',11], telmiGen:[10,'TLG3102',18], atorva10:[7,'ATV1188',13], dolo:[40,'DL65X21',22], azithral:[6,'AZ5C044',9], cetzine:[15,'CZ10B12',19], electral:[30,'ELO2208',14], claribid:[6,'CLB5019',12]},
+  P2:{glycomet:[6,'GL23J902',9], amlokind:[4,'AMK2311',14], pan40:[3,'PN40Z12',2], atorva10:[5,'ATV1032',12], dolo:[20,'DL65W80',15], shelcal:[8,'SHC5031',17]},
+  P3:{glycomet:[10,'GL24C330',15], amlokind:[8,'AMK2405',19], pan40:[6,'PN40B55',10], atorva10:[4,'ATV1201',16], dolo:[25,'DL65Y02',19], azithral:[3,'AZ5C077',12], electral:[12,'ELO2241',16], claribid:[4,'CLB5033',15]},
+  P4:{glycomet:[4,'GL23H511',7], pan40:[5,'PN40C19',8], dolo:[12,'DL65V33',11], cetzine:[6,'CZ10A90',10]},
+  P5:{telma40:[5,'TM40R12',17], glycomet:[14,'GL24M207',20], amlokind:[9,'AMK2412',22], pan40:[8,'PN40D60',18], telmiGen:[6,'TLG3150',21], atorva10:[6,'ATV1250',20], azithral:[5,'AZ5C101',14], shelcal:[10,'SHC5099',23], cetzine:[9,'CZ10C03',21]},
+  P6:{glycomet:[20,'GL24P010',19], amlokind:[10,'AMK2501',23], pan40:[10,'PN40E01',20], telma40:[4,'TM40Q88',15], atorva10:[9,'ATV1290',21]}
+};
+const RIDERS=[
+  {id:'R1', name:'Imran Shaikh', vehicle:'MH-02 EK 4471', rating:4.9, x:378, y:232},
+  {id:'R2', name:'Sana Qureshi', vehicle:'MH-02 FB 9012', rating:4.8, x:452, y:96},
+  {id:'R3', name:'Vikram Jadhav', vehicle:'MH-47 AB 3310', rating:4.7, x:430, y:300}
+];
+const CUSTOMER={name:'Rahul Sharma', x:250, y:172, address:'1203, Sea Breeze Tower, Lokhandwala Complex, Andheri (W), Mumbai 400053'};
+const PHARMACIST='Ph. Kavya Nair';
+const SLOTS=[['','Express · within 60 minutes'],['Today 6–8 pm','Today 6–8 pm'],['Today 8–10 pm','Today 8–10 pm'],['Tomorrow 8–10 am','Tomorrow 8–10 am']];
+const APPS=[
+  {key:'customer', label:'Customer app', who:'Rahul, ordering for his family', does:'Search medicines, upload a prescription, pay and track delivery.', mobile:true},
+  {key:'pharmacist', label:'Pharmacist console', who:'Ph. Kavya Nair, registered pharmacist', does:'Verify prescriptions and approve substitutes.'},
+  {key:'partner', label:'Partner pharmacy app', who:'Any of 6 licensed partner shops', does:'Accept orders, manage stock, scan batch and expiry, seal bags.'},
+  {key:'rider', label:'Rider app', who:'Imran, Sana or Vikram', does:'Pick up sealed bags and deliver with an OTP check.', mobile:true},
+  {key:'ops', label:'Ops control tower', who:'Medi60 operations team', does:'Watch every order live, see matching decisions, run the demo clock.'}
+];
+
+/* ===================== Shared store ===================== */
+/* Two ways to share one live order between the apps:
+   - 'db': the artifact's cloud database. Works across devices. One open app (the "leader", chosen by a
+     lease) is the only writer; every other app sends its button presses as commands, which the leader applies.
+   - 'ls': browser localStorage. Fallback when the database is not available; syncs tabs on one computer only. */
+const KEY='medi60-live-v2', TABS_KEY='medi60-tabs-v2';
+function clone(x){ return JSON.parse(JSON.stringify(x)); }
+function freshStore(epoch){ return {orders:[], inv:clone(INV_BASE), online:{P1:true,P2:true,P3:true,P4:true,P5:true,P6:true}, riderOnline:{R1:true,R2:true,R3:false}, offerStats:{}, usedRx:{}, clock:{speed:10,paused:false}, seq:0, counter:0, epoch:epoch||1, acks:{}}; }
+let canLS=true;
+function loadStore(){ try{ const s=localStorage.getItem(KEY); return s?JSON.parse(s):null; }catch(e){ canLS=false; return null; } }
+let mode=(window.claude&&typeof window.claude.use==='function')?'pending':'ls';
+let S=(mode==='ls'?loadStore():null)||freshStore();
+let dirty=true, applyingRemote=false;
+function persist(){
+  S.seq++;
+  if(mode!=='ls') return;
+  if(canLS){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ canLS=false; toast('Browser storage is full or blocked, so tabs stop syncing. Use the app switcher in one tab.'); } }
+}
+function mutate(fn, quiet){
+  if(mode==='db'){ const r=fn(); if(isLeader) flushDiff(); if(!quiet) dirty=true; return r; }
+  const f=loadStore(); if(f) S=f; const r=fn(); persist(); if(!quiet) dirty=true; return r;
+}
+window.addEventListener('storage', e=>{
+  if(mode!=='ls'||e.key!==KEY) return;
+  const prev=S; S=e.newValue?JSON.parse(e.newValue):freshStore();
+  notifyChanges(prev,S); dirty=true;
+});
+const TAB=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+let isLeader=(mode==='ls'), tabCount=1;
+// localStorage mode: one visible tab ("leader") runs the system timers so they fire exactly once.
+function heartbeat(){
+  if(mode!=='ls') return;
+  if(!canLS){ isLeader=true; return; }
+  try{ const h=JSON.parse(localStorage.getItem(TABS_KEY)||'{}'); const now=Date.now(); h[TAB]={t:now,v:!document.hidden};
+    Object.keys(h).forEach(k=>{ const e=h[k]; const t=typeof e==='number'?e:(e&&e.t)||0; if(now-t>4000) delete h[k]; });
+    localStorage.setItem(TABS_KEY, JSON.stringify(h));
+    const ids=Object.keys(h).sort(); const vis=ids.filter(k=>h[k]&&h[k].v);
+    isLeader=(vis.length?vis[0]:ids[0])===TAB;
+    const n=ids.length; if(n!==tabCount){ tabCount=n; updateSyncChip(); } }
+  catch(e){ isLeader=true; }
+}
+heartbeat(); setInterval(heartbeat,1000);
+document.addEventListener('visibilitychange',()=>{ heartbeat(); if(mode==='db'&&document.hidden&&isLeader){ isLeader=false; updateSyncChip(); } else if(mode==='db'&&!document.hidden) leaseLoop(); dirty=true; });
+
+/* ---------- Cloud database mode ---------- */
+let DB=null, metaLoaded=false, ordersLoaded=false, remoteOrders=[], remoteMeta=null, cmdDocs=[], dbNote='';
+const pendingMine=[]; // this app's commands the leader has not confirmed yet
+const known={}, wq={}, doneCmds=new Set(), optimistic={};
+function syncLabel(){
+  if(mode==='db') return metaLoaded&&ordersLoaded?(dbNote?['warn',dbNote]:['ok','Cloud sync on · works across devices']):['acc','Connecting to the live database…'];
+  if(mode==='pending') return ['acc','Connecting…'];
+  return canLS?['ok','Live sync on'+(tabCount>1?' · '+tabCount+' tabs open':'')+' · this computer only']:['warn','Single-tab mode'];
+}
+function updateSyncChip(){ const el=document.getElementById('syncChip'); if(!el) return; const l=syncLabel(); el.className='chip '+l[0]; el.textContent=l[1]; }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function dbError(e){
+  const c=e&&e.code;
+  if(c==='quota_exceeded') toast('The live database is full. Reset demo data in Ops to clear old orders.');
+  else if(c==='invalid_argument'||c==='not_granted'){ dbNote='View-only access: ask the owner for Contributor access to place orders'; updateSyncChip(); }
+  else if(c==='revoked'){ dbNote='Access to the live database was withdrawn'; updateSyncChip(); }
+}
+function metaOf(st){ const m={}; Object.keys(st).forEach(k=>{ if(k!=='orders') m[k]=st[k]; }); return m; }
+function queueWrite(path,data,del){ const q=wq[path]||(wq[path]={busy:false,next:null}); q.next={data:data?clone(data):null,del:!!del,tries:0}; if(!q.busy) pump(path); }
+async function pump(path){
+  const q=wq[path]; q.busy=true;
+  while(q.next){ const job=q.next; q.next=null;
+    try{ const ref=DB.doc(path); if(job.del) await ref.delete(); else await ref.set(job.data); }
+    catch(e){ dbError(e); if((!e||e.code==='unavailable'||!e.code)&&job.tries<3&&!q.next){ job.tries++; await sleep(300+Math.random()*500); q.next=job; } } }
+  q.busy=false;
+}
+// Leader only: write every document that changed since it was last written or seen.
+function flushDiff(){
+  if(mode!=='db'||!isLeader) return;
+  const m=metaOf(S), mj=JSON.stringify(m);
+  if(known.meta!==mj){ known.meta=mj; queueWrite('medi60/meta',m); }
+  S.orders.forEach(o=>{ if(o.epoch==null) o.epoch=S.epoch; const j=JSON.stringify(o); if(known['o:'+o.id]!==j){ known['o:'+o.id]=j; queueWrite('orders/'+o.id,o); } });
+}
+let cmdSeq=0;
+function sendCmd(name,p){ cmdSeq++; const id=TAB+'-'+cmdSeq; pendingMine.push({n:cmdSeq,name,p:clone(p||{}),at:Date.now()}); DB.doc('cmds/'+id).set({name, p:clone(p||{}), from:TAB, ts:Date.now(), n:cmdSeq}).catch(e=>{ dbError(e); toast('Could not reach the live database. Try again.'); }); }
+// Apply a command coming from another app (leader only), then write the changes.
+function applyRemote(name,p,from,n){
+  if(!CMD[name]) return;
+  const prev=clone(S); applyingRemote=true;
+  try{ CMD[name](p||{}); }catch(e){ console.error(e); } finally{ applyingRemote=false; }
+  S.acks=S.acks||{}; if(from) S.acks[from]=Math.max(S.acks[from]||0,n||0);
+  flushDiff(); notifyChanges(prev,S); dirty=true;
+}
+// Followers: rebuild the state from the database, then re-apply this app's own unconfirmed clicks on top,
+// so a click never appears to undo itself while the leader is still processing it.
+function rebuildFromRemote(){
+  const prev=clone(S), base=remoteMeta?clone(remoteMeta):metaOf(freshStore()), ep=base.epoch||1;
+  base.orders=remoteOrders.filter(o=>(o.epoch||1)>=ep).map(clone).sort((a,b)=>(a.createdMs||0)-(b.createdMs||0));
+  if(!base.acks) base.acks={};
+  S=base;
+  const acked=S.acks[TAB]||0, now=Date.now();
+  for(let i=pendingMine.length-1;i>=0;i--){ const c=pendingMine[i]; if(c.n<=acked||now-c.at>60000) pendingMine.splice(i,1); }
+  applyingRemote=true; try{ pendingMine.forEach(c=>{ try{ CMD[c.name](clone(c.p)); }catch(e){} }); } finally{ applyingRemote=false; }
+  notifyChanges(prev,S); dirty=true;
+}
+function processCmds(){
+  if(mode!=='db'||!isLeader||!metaLoaded||!ordersLoaded) return;
+  const list=cmdDocs.filter(d=>!doneCmds.has(d.id)).sort((a,b)=>(a.data.ts-b.data.ts)||(a.data.n-b.data.n));
+  list.forEach(d=>{ doneCmds.add(d.id); const c=d.data; if(c.from!==TAB&&Date.now()-(c.ts||0)<600000) applyRemote(c.name,c.p,c.from,c.n); queueWrite('cmds/'+d.id,null,true); });
+}
+// Run a named command: directly in localStorage mode or on the leader; otherwise apply it locally at once and send it to the leader.
+function exec(name,p){
+  if(mode!=='db') return mutate(()=>CMD[name](p||{}));
+  if(isLeader){ const r=CMD[name](p||{}); flushDiff(); dirty=true; return r; }
+  const r=CMD[name](p||{}); dirty=true; sendCmd(name,p); return r;
+}
+function execField(p){ return exec('field',p); }
+function onMeta(snap){
+  if(!snap.metadata.fromCache) metaLoaded=true;
+  if(!(isLeader&&ordersLoaded&&metaLoaded&&known.meta)){
+    remoteMeta=snap.exists?clone(snap.data()):null; known.meta=remoteMeta?JSON.stringify(remoteMeta):'';
+    rebuildFromRemote();
+  }
+  updateSyncChip(); leaseLoop();
+}
+function onOrders(snap){
+  if(!snap.metadata.fromCache) ordersLoaded=true;
+  remoteOrders=snap.docs.map(d=>clone(d.data()));
+  const ep=(isLeader?S.epoch:(remoteMeta&&remoteMeta.epoch))||1;
+  if(isLeader){ remoteOrders.filter(o=>(o.epoch||1)<ep).forEach(o=>{ if(!known['del:'+o.id]){ known['del:'+o.id]=1; queueWrite('orders/'+o.id,null,true); } }); updateSyncChip(); return; }
+  remoteOrders.forEach(o=>{ known['o:'+o.id]=JSON.stringify(o); });
+  rebuildFromRemote(); updateSyncChip(); leaseLoop();
+}
+function onCmds(snap){ cmdDocs=snap.docs.map(d=>({id:d.id,data:d.data()})); processCmds(); }
+let leaseBusy=false;
+async function leaseLoop(){
+  if(mode!=='db'||leaseBusy||!metaLoaded||!ordersLoaded) return;
+  if(document.hidden){ if(isLeader){ isLeader=false; updateSyncChip(); } return; }
+  leaseBusy=true;
+  try{ const r=await DB.doc('medi60/leader').acquire({holder:TAB, ttlMs:7000}); const was=isLeader; isLeader=!!r.acquired;
+    if(isLeader&&!was){ rebuildFromRemote(); pendingMine.length=0; flushDiff(); processCmds(); dirty=true; }
+    if(was!==isLeader) updateSyncChip(); }
+  catch(e){ dbError(e); }
+  finally{ leaseBusy=false; }
+}
+function startDb(db){
+  DB=db; mode='db'; isLeader=false; S=freshStore(); dirty=true; updateSyncChip();
+  const t=setTimeout(()=>{ if(!metaLoaded||!ordersLoaded){ dbNote='The live database can’t be reached yet'; updateSyncChip(); } },10000);
+  const ok=()=>{ if(metaLoaded&&ordersLoaded){ clearTimeout(t); if(dbNote==='The live database can’t be reached yet'){ dbNote=''; updateSyncChip(); } } };
+  db.doc('medi60/meta').onSnapshot(s=>{ onMeta(s); ok(); }, e=>{ dbError(e); });
+  db.collection('orders').onSnapshot(s=>{ onOrders(s); ok(); }, e=>{ dbError(e); });
+  db.collection('cmds').onSnapshot(onCmds, e=>{ dbError(e); });
+  setInterval(leaseLoop,2500);
+}
+if(mode==='pending'){
+  window.claude.use('db').then(db=>{ if(db) startDb(db); else { mode='ls'; S=loadStore()||freshStore(); isLeader=true; heartbeat(); dirty=true; } })
+    .catch(()=>{ mode='ls'; S=loadStore()||freshStore(); isLeader=true; heartbeat(); dirty=true; });
+}
+
+/* ===================== Per-tab state ===================== */
+const local={
+  app:null, custView:'home', cart:[], rxAttach:null, search:'', trackId:null,
+  shop:'P1', shopTab:'orders', rider:'R1', pharmSel:null, opsSel:null, allowSub:false, slot:'', pay:'UPI'
+};
+function readHash(){ const h=(location.hash||'').replace('#',''); local.app=APPS.some(a=>a.key===h)?h:null; }
+readHash();
+
+/* ===================== Helpers ===================== */
+function fmt(min){ min=Math.max(0,min); const m=Math.floor(min), s=Math.floor((min-m)*60); return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
+function rs(n){ return '₹'+Math.round(n).toLocaleString('en-IN'); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function partner(id){ return PARTNERS.find(p=>p.id===id); }
+function rider(id){ return RIDERS.find(r=>r.id===id); }
+function stock(pid,med){ const s=(S.inv[pid]||{})[med]; return s?{qty:s[0],batch:s[1],exp:s[2]}:null; }
+function okStock(pid,med,qty){ const s=stock(pid,med); return !!s && s.qty>=qty && s.exp>=3; }
+function inService(p){ return p.km<=4 && S.online[p.id]; }
+function acceptRate(pid){ const s=S.offerStats[pid]||{accepted:0,missed:0}; return (BASE_ACCEPT[pid]*20+s.accepted)/(20+s.accepted+s.missed); }
+function totals(items){ const sub=items.reduce((a,it)=>a+MEDS[it.med].mrp*it.qty,0); const disc=Math.round(sub*0.10); const fee=(sub-disc>=499||sub===0)?0:29; return {sub,disc,fee,total:sub-disc+fee}; }
+function rxKey(rx){ return !rx?null: rx.kind==='sample'?'S-'+rx.key:'U-'+rx.name+'-'+rx.size; }
+function getOrder(id){ return S.orders.find(o=>o.id===id); }
+function active(){ return S.orders.filter(o=>!o.done); }
+function simNow(o){ if(o.done) return o.tEnd; const c=S.clock; return o.simBase + (c.paused?0:(Date.now()-o.realBase)/1000*c.speed/60); }
+function rebase(at){ const now=at||Date.now(), c=S.clock; S.orders.forEach(o=>{ if(!o.done){ o.simBase=o.simBase+(c.paused?0:(now-o.realBase)/1000*c.speed/60); o.realBase=now; } }); }
+function lastOffer(o){ return o.offers[o.offers.length-1]; }
+function prog1(o){ return o.riderStage==='to_shop'? Math.min(1,(simNow(o)-o.assignedAt)/10) : (o.riderStage?1:0); }
+function prog2(o){ return o.riderStage==='enroute'? (o.atDoor?1:Math.min(1,(simNow(o)-o.outAt)/18)) : (o.riderStage==='delivered'?1:0); }
+
+/* ===================== Matching engine ===================== */
+function altsFor(med){ const m=MEDS[med]; return Object.keys(MEDS).filter(k=>k!==med&&MEDS[k].salt===m.salt&&MEDS[k].strength===m.strength&&MEDS[k].form===m.form); }
+function docSub(o){ return (o&&o.fields&&o.fields.docSub)||'allowed'; }
+// Substitutes are considered only if the doctor permits them and nobody has turned them down for this order.
+function orderOpts(o){ return {radius:o.radius||4, allowSub:!!(o.needsRx&&docSub(o)!=='no'&&!o.noSub&&!o.subApplied)}; }
+function scorePartner(p, items, opt){
+  opt=opt||{}; const R=opt.radius||4;
+  const r={p, eligible:false, total:0, b:{basket:0,distance:0,accept:0,rating:0,shelf:0}, issues:[], subs:[]};
+  if(p.km>R){ r.issues.push('Outside '+R+' km radius'); return r; }
+  if(!S.online[p.id]){ r.issues.push('Shop offline'); return r; }
+  let have=0, minShelf=99;
+  items.forEach((it,i)=>{ const n=MEDS[it.med].brand;
+    if(okStock(p.id,it.med,it.qty)){ have++; minShelf=Math.min(minShelf,stock(p.id,it.med).exp); return; }
+    if(opt.allowSub&&MEDS[it.med].rx){ const alt=altsFor(it.med).find(k=>okStock(p.id,k,it.qty)); if(alt){ have++; r.subs.push({i,from:it.med,to:alt}); minShelf=Math.min(minShelf,stock(p.id,alt).exp); return; } }
+    const s=stock(p.id,it.med); r.issues.push(!s||s.qty<it.qty?n+' not in stock':n+' expires in under 3 months'); });
+  const frac=items.length?have/items.length:0;
+  r.b.basket=40*frac; r.b.distance=25*Math.max(0,1-p.km/R); r.b.accept=15*acceptRate(p.id); r.b.rating=10*p.rating/5; r.b.shelf=have?10*Math.min(1,(minShelf-3)/9):0;
+  r.total=Object.values(r.b).reduce((a,b)=>a+b,0); r.eligible=items.length>0&&frac===1; return r;
+}
+function rankPartners(items,opt){ return PARTNERS.map(p=>scorePartner(p,items,opt)).sort((a,b)=>(b.eligible-a.eligible)||(b.total-a.total)); }
+
+/* ===================== Order lifecycle (operate on S inside mutate) ===================== */
+function log(o, what, who, kind){ o.log.push({t:simNow(o), what, who, kind:kind||'ok'}); }
+function setStatus(o, s, who, what, kind){ o.status=s; o.statusAt=simNow(o); if(what) log(o,what,who,kind); }
+function finish(o, result){ o.tEnd=simNow(o); o.done=true; o.result=result; if(result==='delivered'&&o.rx) S.usedRx[rxKey(o.rx)]=o.id; }
+function rxFields(rx){
+  if(!rx) return null;
+  if(rx.kind==='sample'){ const X=SAMPLES[rx.key]; return {doctor:X.doctor,reg:X.reg,date:X.date,patient:X.patient,match:false,docSub:X.sub==='no'?'no':'allowed',ixAck:false}; }
+  return {doctor:'',reg:'',date:'',patient:'',match:false,docSub:'allowed',ixAck:false};
+}
+// The order is built on the customer's device and the same payload is applied by whoever writes the shared data.
+function placeOrder(){
+  const items=local.cart.map(c=>({med:c.med,qty:c.qty,orig:null,scanned:false}));
+  const needsRx=items.some(it=>MEDS[it.med].rx);
+  const p={id:'M60-'+String(Date.now()).slice(-5), otp:String(1000+Math.floor(Math.random()*9000)), createdMs:Date.now(), items, rx:needsRx?local.rxAttach:null,
+    slot:local.slot||null, pay:local.pay||'UPI', allowSub:!!local.allowSub&&!(local.rxAttach&&local.rxAttach.kind==='sample'&&SAMPLES[local.rxAttach.key].sub==='no')};
+  optimistic[p.id]=Date.now(); exec('place',p); return p.id;
+}
+function placeInto(p){
+  if(getOrder(p.id)) return;
+  const items=clone(p.items), needsRx=items.some(it=>MEDS[it.med].rx), rx=needsRx?p.rx:null, cod=p.pay==='COD';
+  S.counter++;
+  const o={id:p.id, epoch:S.epoch, createdMs:p.createdMs||Date.now(), items, needsRx, rx, fields:rxFields(rx), status:'CREATED', statusAt:0, simBase:0, realBase:Date.now(), log:[], offers:[], ranked:null,
+    partnerId:null, riderId:null, riderStage:null, otp:p.otp, payMethod:p.pay||'UPI', payment:cod?'cod':'authorised', amount:totals(items).total, slot:p.slot||null, custAllowSub:!!p.allowSub, radius:4,
+    subs:null, subApproved:false, partial:null, done:false, result:null};
+  S.orders.push(o);
+  log(o,'Order placed · '+rs(o.amount)+(cod?' · cash on delivery':' authorised on '+o.payMethod+' (not charged yet)')+(o.slot?' · scheduled for '+o.slot:' · express, within 60 min'),'Customer');
+  if(rx&&rx.kind==='sample') log(o,'AI read the prescription · doctor’s substitution instruction: '+(o.fields.docSub==='no'?'do not substitute':'substitution permitted'),'System','sys');
+  if(needsRx){ setStatus(o,'RX_UNDER_REVIEW','System','Prescription sent to the pharmacist queue','sys');
+    log(o,'In parallel: '+rankPartners(items,orderOpts(o)).filter(r=>r.eligible).length+' of 5 nearby shops can supply the order','System','sys'); }
+  else { log(o,'No prescription medicines · pharmacist check not needed','System','sys'); setStatus(o,'MATCHING','System','Matching nearby shops','sys'); }
+}
+function interactionsOf(items){ const salts=new Set(items.map(it=>MEDS[it.med].salt)); return INTERACTIONS.filter(x=>salts.has(x.a)&&salts.has(x.b)); }
+function rxChecks(o){
+  const f=o.fields, res=[];
+  res.push(['Doctor name present', f.doctor.trim().length>3]);
+  res.push(['Doctor registration number present', /[A-Za-z]{2,}.*\d{3,}/.test(f.reg)]);
+  let ok=false; if(f.date){ const age=(Date.now()-new Date(f.date+'T00:00:00').getTime())/864e5; ok=age>=-1&&age<=183; }
+  res.push(['Prescription dated within the last 6 months', ok]);
+  res.push(['Patient is the account holder or a family member', PATIENTS.includes(f.patient)]);
+  let match; if(o.rx.kind==='sample'){ const salts=SAMPLES[o.rx.key].items.map(i=>MEDS[i.med].salt); match=o.items.filter(it=>MEDS[it.med].rx).every(it=>salts.includes(MEDS[it.med].salt)); } else match=!!f.match;
+  res.push(['Prescription medicines in the cart match the prescription', match]);
+  const used=S.usedRx[rxKey(o.rx)];
+  res.push([used?'Already dispensed against this prescription (order '+used+')':'First use of this prescription (image fingerprint)', !used]);
+  const salts=o.items.map(it=>MEDS[it.med].salt);
+  res.push(['No duplicate therapy (same salt twice)', new Set(salts).size===salts.length]);
+  res.push(['No Schedule X or narcotic medicine', !o.items.some(it=>SCHEDULE_X.includes(it.med))]);
+  const ix=interactionsOf(o.items);
+  res.push([ix.length?'Interaction: '+ix.map(x=>x.a+' + '+x.b+' ('+x.note+')').join('; ')+(f.ixAck?' · reviewed':' · tick “reviewed” to clear'):'No known interactions between these medicines', !ix.length||!!f.ixAck]);
+  res.push(['Doctor’s substitution instruction: '+(f.docSub==='no'?'NOT allowed (do not substitute)':'substitution permitted'), true]);
+  return res;
+}
+function cancel(o, reason, who){
+  if(o.done) return;
+  const cap=o.payment==='captured', cod=o.payMethod==='COD'; o.payment=cap?'refunded':cod?'none':'released'; o.cancelReason=reason;
+  if(o.partnerId && o.status==='PACKING'){ o.items.forEach(it=>{ const s=S.inv[o.partnerId][it.med]; if(s) s[0]+=it.qty; }); }
+  setStatus(o,'CANCELLED',who,(reason?reason+' · ':'')+(cap?'payment refunded':cod?'cash on delivery, nothing to refund':'authorised payment released'),'bad'); finish(o,'cancelled');
+}
+function runMatching(o){
+  const opt=orderOpts(o), R=opt.radius;
+  o.ranked=rankPartners(o.items,opt).map(r=>({pid:r.p.id, eligible:r.eligible, total:r.total, b:r.b, issues:r.issues, subs:r.subs}));
+  const next=o.ranked.filter(r=>r.eligible && !o.offers.some(x=>x.pid===r.pid));
+  if(next.length){ const best=next[0];
+    if(best.subs.length){ o.subs=best.subs; o.subPid=best.pid; o.subApproved=false;
+      setStatus(o,'SUBSTITUTION_PENDING','System','Best shop '+partner(best.pid).name+' lacks '+best.subs.map(s=>MEDS[s.from].brand).join(', ')+' · doctor permits substitution, so a same-salt alternative is proposed','warn'); return; }
+    log(o,o.ranked.filter(r=>r.eligible).length+' shops within '+R+' km can supply the full order · best: '+partner(best.pid).name+' ('+best.total.toFixed(1)+' pts)','System','sys'); offer(o,best.pid); return; }
+  if(o.offers.length){ cancel(o,'No nearby pharmacy accepted the order','System'); return; }
+  const near=PARTNERS.filter(p=>p.km<=R&&S.online[p.id]);
+  const cov=near.map(p=>({p,keep:o.items.map((it,i)=>okStock(p.id,it.med,it.qty)?i:-1).filter(i=>i>=0)})).sort((a,b)=>(b.keep.length-a.keep.length)||(a.p.km-b.p.km))[0];
+  const noSubNote=docSub(o)==='no'?' · doctor wrote “do not substitute”':'';
+  if(cov&&cov.keep.length){ o.partial={pid:cov.p.id,keep:cov.keep}; setStatus(o,'PARTIAL_PENDING','System','No shop within '+R+' km has every item'+noSubNote+' · '+cov.p.name+' has '+cov.keep.length+' of '+o.items.length,'warn'); return; }
+  cancel(o, near.length?'None of these medicines are in stock within '+R+' km'+noSubNote:'No partner pharmacy within '+R+' km is online','System');
+}
+function offer(o,pid){ o.offers.push({pid,at:simNow(o),resp:null}); setStatus(o,'OFFERED_TO_PARTNER','System','Offered to '+partner(pid).name+' · 3-minute accept window','sys'); }
+function bump(pid,k){ S.offerStats[pid]=S.offerStats[pid]||{accepted:0,missed:0}; S.offerStats[pid][k]++; }
+function assignRider(o){
+  if(o.riderId) return true;
+  const busy=new Set(active().filter(x=>x.riderId&&x!==o).map(x=>x.riderId));
+  const p=partner(o.partnerId);
+  const free=RIDERS.filter(r=>S.riderOnline[r.id]&&!busy.has(r.id)).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];
+  if(!free){ if(!o.waitRiderLogged){ log(o,'No rider free right now · will assign as soon as one is online','System','warn'); o.waitRiderLogged=true; } return false; }
+  o.riderId=free.id; o.riderStage='to_shop'; o.assignedAt=simNow(o);
+  log(o,'Rider '+free.name+' assigned · heading to '+p.name+' while it packs','System','sys'); return true;
+}
+const ACT={
+  approve(o){ if(o.status!=='RX_UNDER_REVIEW') return; if(rxChecks(o).some(c=>!c[1])){ toast('All checks must pass before approval'); return; }
+    o.verifiedAt=simNow(o); setStatus(o,'RX_APPROVED','Pharmacist',PHARMACIST+' approved the prescription in '+fmt(simNow(o)));
+    setStatus(o,'MATCHING','System','Matching engine ranking nearby shops','sys'); },
+  reject(o,reasons){ if(o.status!=='RX_UNDER_REVIEW') return; if(!reasons.length){ toast('Pick at least one reason'); return; }
+    o.rejectReasons=reasons; o.verifiedAt=simNow(o); setStatus(o,'RX_REJECTED','Pharmacist','Prescription rejected: '+reasons.join('; '),'bad'); cancel(o,null,'System'); },
+  ask(o,a){ if(o.status!=='RX_UNDER_REVIEW') return; const q=String((a&&a.q)||'').trim()||'Please upload a clearer photo of the full prescription.';
+    o.query=q; o.qAt=simNow(o); o.asked=(o.asked||0)+1; setStatus(o,'RX_QUERY','Pharmacist',PHARMACIST+' asked the customer: “'+q+'” · order clock paused','warn'); },
+  reupload(o,a){ if(o.status!=='RX_QUERY'||!a||!a.rx) return; const paused=Math.max(0,simNow(o)-o.qAt); o.simBase-=paused;
+    o.rx=a.rx; o.fields=rxFields(a.rx); o.query=null;
+    setStatus(o,'RX_UNDER_REVIEW','Customer','Customer sent a new prescription · back in the pharmacist queue · clock resumed ('+fmt(paused)+' paused)'); },
+  subApprove(o){ if(o.status!=='SUBSTITUTION_PENDING'||o.subApproved) return; o.subApproved=true;
+    log(o,PHARMACIST+' approved '+o.subs.map(s=>MEDS[s.to].brand+' for '+MEDS[s.from].brand).join(', ')+' (same salt, strength, form; doctor permits substitution)','Pharmacist');
+    if(o.custAllowSub) applySubs(o,true); },
+  subReject(o){ if(o.status!=='SUBSTITUTION_PENDING') return; o.noSub=true; o.subs=null; o.subApproved=false;
+    log(o,PHARMACIST+' did not approve the substitute · looking for a shop with the prescribed brand','Pharmacist','warn'); setStatus(o,'MATCHING','System',null); },
+  subConsent(o){ if(o.status!=='SUBSTITUTION_PENDING'||!o.subApproved) return; applySubs(o,false); },
+  custKeep(o){ if(o.status!=='SUBSTITUTION_PENDING'||!o.subApproved) return; o.noSub=true; o.subs=null; o.subApproved=false;
+    log(o,'Customer chose to keep the prescribed brand · looking for a shop that has it','Customer'); setStatus(o,'MATCHING','System',null); },
+  custRemoveSub(o){ if(o.status!=='SUBSTITUTION_PENDING'||!o.subApproved) return; const idx=o.subs.map(s=>s.i), gone=idx.map(i=>MEDS[o.items[i].med].brand);
+    o.items=o.items.filter((_,i)=>!idx.includes(i)); o.subs=null; o.subApproved=false;
+    if(!o.items.length){ cancel(o,'Customer removed the only item','Customer'); return; }
+    o.amount=totals(o.items).total; log(o,'Customer removed '+gone.join(', ')+' from the order','Customer'); setStatus(o,'MATCHING','System','Re-matching without the removed item','sys'); },
+  widen(o){ if(o.done) return; if((o.radius||4)>=8){ toast('Already searching within 8 km'); return; } o.radius=8;
+    log(o,'Ops widened the search radius to 8 km to save the 60-minute promise','Ops','warn');
+    if(o.status==='PARTIAL_PENDING'||o.status==='MATCHING'||(o.status==='SUBSTITUTION_PENDING'&&!o.subApproved)){ o.partial=null; o.subs=null; setStatus(o,'MATCHING','System','Re-matching within 8 km','sys'); } },
+  callShop(o){ if(o.status!=='OFFERED_TO_PARTNER') return; const off=lastOffer(o); if(off.called){ toast('This shop has already been called'); return; }
+    off.called=true; off.at+=2; log(o,'Ops called '+partner(off.pid).name+' · accept window extended by 2 minutes','Ops'); },
+  toSlot(o,a){ if(o.done||o.slot) return; o.slot=(a&&a.slot)||'Today 6–8 pm'; log(o,'Ops offered a scheduled slot and the customer accepted · '+o.slot,'Ops'); },
+  rate(o,a){ if(o.result!=='delivered') return; o.rating=Math.max(1,Math.min(5,+a.v||5)); },
+  partial(o){ if(o.status!=='PARTIAL_PENDING') return; const drop=o.items.filter((_,i)=>!o.partial.keep.includes(i)).map(it=>MEDS[it.med].brand);
+    o.items=o.items.filter((_,i)=>o.partial.keep.includes(i)); o.partial=null; o.amount=totals(o.items).total;
+    log(o,'Customer chose to get the available items now · removed '+drop.join(', '),'Customer'); setStatus(o,'MATCHING','System','Re-matching with the available items','sys'); },
+  custCancel(o){ if(o.partnerId||o.done) return; cancel(o,'Cancelled by customer','Customer'); },
+  accept(o,a){ if(o.status!=='OFFERED_TO_PARTNER'){ toast('This order is no longer waiting for a shop'); return; } const off=lastOffer(o);
+    if(a&&a.shop&&off.pid!==a.shop){ toast('This order has moved to another shop'); return; }
+    const short=o.items.filter(it=>!okStock(off.pid,it.med,it.qty)).map(it=>MEDS[it.med].brand);
+    if(short.length){ toast('Not enough usable stock of '+short.join(', ')+'. Decline the order instead.'); return; }
+    off.resp='accepted'; off.respAt=simNow(o); bump(off.pid,'accepted');
+    o.partnerId=off.pid; o.acceptedAt=simNow(o); o.items.forEach(it=>{ const s=S.inv[off.pid][it.med]; if(s) s[0]=Math.max(0,s[0]-it.qty); });
+    setStatus(o,'PARTNER_ACCEPTED','Partner',partner(off.pid).name+' accepted in '+Math.round((simNow(o)-off.at)*60)+' s');
+    if(o.payMethod==='COD') log(o,'Cash on delivery · rider will collect '+rs(o.amount),'System','sys'); else { o.payment='captured'; log(o,'Payment captured','System','sys'); }
+    setStatus(o,'PACKING','Partner','Picking and packing started'); assignRider(o); },
+  decline(o,a){ if(o.status!=='OFFERED_TO_PARTNER') return; const off=lastOffer(o); if(a&&a.shop&&off.pid!==a.shop){ toast('This order has moved to another shop'); return; } off.resp='declined'; bump(off.pid,'missed');
+    log(o,partner(off.pid).name+' declined · re-routing','Partner','warn'); setStatus(o,'MATCHING','System',null); runMatching(o); },
+  scan(o,a){ const i=a.i; if(o.status!=='PACKING'||(a.shop&&o.partnerId!==a.shop)||!o.items[i]||o.items[i].scanned) return; o.items[i].scanned=true; const s=stock(o.partnerId,o.items[i].med);
+    log(o,'Scanned '+MEDS[o.items[i].med].brand+' · batch '+s.batch+' · exp '+monthLabel(s.exp),'Partner'); },
+  seal(o,a){ if(o.status!=='PACKING'||o.partnerId!==a.shop) return; if(!o.items.every(it=>it.scanned)){ toast('Scan every item before sealing'); return; } o.sealed=!!a.val; log(o,a.val?'Bag sealed with tamper-proof tape':'Seal removed','Partner',a.val?'ok':'warn'); },
+  ready(o,a){ if(o.status!=='PACKING') return; if(a&&a.shop&&o.partnerId!==a.shop){ toast('This order belongs to another shop'); return; }
+    if(!o.items.every(it=>it.scanned)){ toast('Scan every item first'); return; } if(!o.sealed){ toast('Seal the bag and tick the box first'); return; } o.readyAt=simNow(o); setStatus(o,'READY_FOR_PICKUP','Partner','Sealed in tamper-proof bag · ready for pickup'); },
+  arrive(o,a){ const manual=!!(a&&a.manual); if(o.riderStage!=='to_shop') return; if(a&&a.rider&&o.riderId!==a.rider){ toast('This delivery is assigned to another rider'); return; } const due=o.assignedAt+10, t=simNow(o);
+    if(manual&&t<due){ o.simBase+=due-t; log(o,'Ride skipped in demo · clock moved forward '+fmt(due-t),'System','sys'); }
+    o.riderStage='at_shop'; log(o,rider(o.riderId).name+' reached '+partner(o.partnerId).name,'Rider'); },
+  pickup(o,a){ if(o.status!=='READY_FOR_PICKUP'||!o.riderId) return; if(a&&a.rider&&o.riderId!==a.rider){ toast('This delivery is assigned to another rider'); return; } if(o.riderStage==='to_shop') ACT.arrive(o,{manual:true});
+    o.pickedAt=simNow(o); setStatus(o,'PICKED_UP','Rider','Rider scanned and collected the sealed bag'); o.outAt=simNow(o); o.riderStage='enroute';
+    setStatus(o,'OUT_FOR_DELIVERY','Rider','Out for delivery to '+(o.fields?o.fields.patient:CUSTOMER.name)); },
+  door(o,a){ const manual=!!(a&&a.manual); if(o.status!=='OUT_FOR_DELIVERY'||o.atDoor) return; if(a&&a.rider&&o.riderId!==a.rider){ toast('This delivery is assigned to another rider'); return; } const due=o.outAt+18, t=simNow(o);
+    if(manual&&t<due){ o.simBase+=due-t; log(o,'Ride skipped in demo · clock moved forward '+fmt(due-t),'System','sys'); }
+    o.atDoor=true; log(o,'Rider at the door · waiting for OTP','Rider'); },
+  deliver(o,a){ if(o.status!=='OUT_FOR_DELIVERY') return; if(a.rider&&o.riderId!==a.rider){ toast('This delivery is assigned to another rider'); return; }
+    if(!/^\d{4}$/.test(a.code)){ toast('Enter the 4-digit OTP'); return; }
+    if(a.code!==o.otp){ o.otpFails=(o.otpFails||0)+1; log(o,'Wrong OTP entered ('+o.otpFails+' of 3)','Rider','warn');
+      if(o.otpFails>=3){ o.otp=(a.newOtp&&a.newOtp!==o.otp)?a.newOtp:String(1000+Math.floor(Math.random()*9000)); o.otpFails=0; log(o,'3 wrong OTPs · old OTP blocked, a new one was sent to the customer','System','warn'); toast('3 wrong attempts. A new OTP has been sent to the customer.'); }
+      else toast('OTP does not match ('+o.otpFails+' of 3). Ask the customer for the 4-digit code.'); return; }
+    if(!o.atDoor) ACT.door(o,{manual:true}); o.riderStage='delivered'; o.deliveredAt=simNow(o);
+    if(o.payMethod==='COD'){ o.payment='collected'; log(o,'Cash '+rs(o.amount)+' collected by the rider','Rider'); }
+    setStatus(o,'DELIVERED','Rider','OTP verified · delivered in '+Math.round(simNow(o))+' min'+(o.slot?' · scheduled slot '+o.slot:'')); finish(o,'delivered'); }
+};
+function applySubs(o,pre){ let saved=0;
+  o.subs.forEach(s=>{ const it=o.items[s.i]; saved+=(MEDS[s.from].mrp-MEDS[s.to].mrp)*it.qty; it.orig=s.from; it.med=s.to; });
+  o.subApplied=true; o.amount=totals(o.items).total;
+  log(o,(pre?'Substitute applied: the customer allowed substitutes at checkout':'Customer accepted the substitute')+(saved>0?' · saves '+rs(saved):''),pre?'System':'Customer',pre?'sys':'ok');
+  setStatus(o,'MATCHING','System','Re-matching with the substituted item','sys'); }
+/* Named commands: everything that changes shared data goes through one of these, so it can be sent to the leader. */
+const CMD={
+  act(p){ const o=getOrder(p.id); if(o&&ACT[p.name]) ACT[p.name](o,p.arg||{}); },
+  place(p){ placeInto(p); },
+  inv(p){ const s=S.inv[p.shop]&&S.inv[p.shop][p.med]; if(!s) return; if(p.op==='inc') s[0]++; else if(p.op==='dec') s[0]=Math.max(0,s[0]-1); else s[0]=s[0]?0:10; },
+  speed(p){ if(S.clock.speed===(+p.v||10)) return; rebase(p.at); S.clock.speed=+p.v||10; },
+  pause(p){ if(S.clock.paused===!!p.v) return; rebase(p.at); S.clock.paused=!!p.v; },
+  field(p){ const o=getOrder(p.id); if(o&&o.fields&&o.status==='RX_UNDER_REVIEW') o.fields[p.key]=p.val; },
+  shopOnline(p){ S.online[p.shop]=!!p.v; },
+  riderOnline(p){ if(!p.v&&active().some(o=>o.riderId===p.rider)) return; S.riderOnline[p.rider]=!!p.v; },
+  reset(){ const ep=(S.epoch||1)+1; if(mode==='db'&&isLeader){ const ids=new Set(S.orders.map(o=>o.id).concat(remoteOrders.map(o=>o.id))); ids.forEach(id=>{ queueWrite('orders/'+id,null,true); delete known['o:'+id]; }); } S=freshStore(ep); }
+};
+function doAct(name, id, arg){ exec('act',{name,id,arg:arg||{}}); }
+
+/* System timers: only the leader tab runs them */
+function systemTick(){
+  if(!isLeader||mode==='pending') return;
+  if(mode==='ls'){ const f=loadStore(); if(f) S=f; }
+  if(mode==='db'&&(!metaLoaded||!ordersLoaded)) return;
+  let changed=false;
+  active().forEach(o=>{
+    const t=simNow(o), since=t-o.statusAt; const before=o.log.length+o.status;
+    if(o.status==='MATCHING'&&since>=0.3) runMatching(o);
+    else if(o.status==='OFFERED_TO_PARTNER'&&!S.online[lastOffer(o).pid]){ const off=lastOffer(o); off.resp='declined'; log(o,partner(off.pid).name+' went offline · re-routing','System','warn'); setStatus(o,'MATCHING','System',null); runMatching(o); }
+    else if(o.status==='OFFERED_TO_PARTNER'&&t-lastOffer(o).at>=3){ const off=lastOffer(o); off.resp='timeout'; bump(off.pid,'missed'); log(o,partner(off.pid).name+' did not respond in 3 min · re-routing','System','warn'); setStatus(o,'MATCHING','System',null); runMatching(o); }
+    if((o.status==='PACKING'||o.status==='READY_FOR_PICKUP')&&!o.riderId) assignRider(o);
+    if(o.riderStage==='to_shop'&&t>=o.assignedAt+10) ACT.arrive(o,null);
+    if(o.status==='OUT_FOR_DELIVERY'&&!o.atDoor&&t>=o.outAt+18) ACT.door(o,null);
+    if(o.log.length+o.status!==before) changed=true;
+  });
+  if(changed){ if(mode==='ls') persist(); else flushDiff(); dirty=true; }
+}
+
+/* ===================== Notifications ===================== */
+const FRIENDLY={RX_QUERY:'The pharmacist has a question about your prescription',RX_APPROVED:'Prescription approved',SUBSTITUTION_PENDING:'A substitute needs your attention',PARTIAL_PENDING:'Some items are not available nearby',PARTNER_ACCEPTED:'A pharmacy confirmed your order',PACKING:'Your order is being packed',READY_FOR_PICKUP:'Packed and sealed',OUT_FOR_DELIVERY:'Out for delivery: keep your OTP ready',DELIVERED:'Delivered',CANCELLED:'Order cancelled'};
+function notifyChanges(prev, next){
+  const app=local.app; if(!app) return;
+  next.orders.forEach(o=>{
+    const p=prev.orders.find(x=>x.id===o.id);
+    const changed=!p||p.status!==o.status||(p.subApproved!==o.subApproved)||(p.riderId!==o.riderId)||(p.offers.length!==o.offers.length);
+    if(!changed) return;
+    if(app==='pharmacist'){ if(o.status==='RX_UNDER_REVIEW'&&(!p||p.status!=='RX_UNDER_REVIEW')) toast('New prescription to verify: '+o.id); if(o.status==='SUBSTITUTION_PENDING'&&!o.subApproved&&(!p||p.status!=='SUBSTITUTION_PENDING')) toast('Substitution request: '+o.id); }
+    if(app==='partner'){ const off=o.status==='OFFERED_TO_PARTNER'&&lastOffer(o); if(off&&off.pid===local.shop&&(!p||p.offers.length!==o.offers.length||p.status!=='OFFERED_TO_PARTNER')) toast('New order '+o.id+' · accept within 3 minutes'); }
+    if(app==='rider'){ if(o.riderId===local.rider&&(!p||p.riderId!==o.riderId)) toast('New delivery assigned: '+o.id); if(o.riderId===local.rider&&o.status==='READY_FOR_PICKUP'&&p&&p.status!=='READY_FOR_PICKUP') toast(o.id+' is sealed and ready for pickup'); }
+    if(app==='customer'){ if(p&&p.status!==o.status&&FRIENDLY[o.status]) toast(o.id+': '+FRIENDLY[o.status]); if(o.status==='SUBSTITUTION_PENDING'&&o.subApproved&&p&&!p.subApproved) toast('Please review the substitute for '+o.id); }
+  });
+}
+
+/* ===================== Shared UI pieces ===================== */
+function statusChip(o){
+  const m={CREATED:['','Placed'],RX_UNDER_REVIEW:['acc','Verifying Rx'],RX_QUERY:['warn','Question for customer'],RX_APPROVED:['acc','Rx approved'],MATCHING:['acc','Matching'],SUBSTITUTION_PENDING:['warn','Substitution'],PARTIAL_PENDING:['warn','Partial stock'],OFFERED_TO_PARTNER:['warn','Awaiting shop'],PARTNER_ACCEPTED:['acc','Accepted'],PACKING:['acc','Packing'],READY_FOR_PICKUP:['acc','Ready for pickup'],PICKED_UP:['acc','Picked up'],OUT_FOR_DELIVERY:['acc','Out for delivery'],DELIVERED:['ok','Delivered'],CANCELLED:['bad','Cancelled'],RX_REJECTED:['bad','Rejected']}[o.status]||['',''];
+  return '<span class="chip '+m[0]+'">'+m[1]+'</span>';
+}
+function etaMin(o){
+  const t=simNow(o), since=t-o.statusAt, rr=o.riderStage==='to_shop'?Math.max(0,o.assignedAt+10-t):(o.riderId?0:10);
+  switch(o.status){
+    case 'RX_UNDER_REVIEW': case 'RX_QUERY': return Math.max(1,7-since)+1.5+10+0.5+18;
+    case 'RX_APPROVED': case 'MATCHING': case 'OFFERED_TO_PARTNER': case 'SUBSTITUTION_PENDING': case 'PARTIAL_PENDING': return 1.5+10+19;
+    case 'PARTNER_ACCEPTED': case 'PACKING': return Math.max(Math.max(1,9-since),rr)+19;
+    case 'READY_FOR_PICKUP': return rr+19;
+    case 'PICKED_UP': return 18.5;
+    case 'OUT_FOR_DELIVERY': return o.atDoor?0.5:Math.max(0,o.outAt+18-t)+0.5;
+  }
+  return 0;
+}
+function riderPos(o){
+  const r=rider(o.riderId); const s={x:r.x,y:r.y}; const p=partner(o.partnerId), c=CUSTOMER, L=(a,b,k)=>({x:a.x+(b.x-a.x)*k,y:a.y+(b.y-a.y)*k});
+  if(o.riderStage==='to_shop') return L(s,p,prog1(o));
+  if(o.riderStage==='at_shop') return {x:p.x,y:p.y};
+  if(o.riderStage==='enroute') return L(p,c,prog2(o));
+  return {x:c.x,y:c.y};
+}
+function mapSVG(opts){
+  opts=opts||{}; const orders=(opts.orders||active());
+  const offered=new Set(orders.filter(o=>o.status==='OFFERED_TO_PARTNER').map(o=>lastOffer(o).pid));
+  const assigned=new Set(orders.filter(o=>o.partnerId&&!o.done).map(o=>o.partnerId));
+  const pins=PARTNERS.map(p=>{
+    let fill='var(--surface)', stroke='var(--muted)', ink='var(--muted)';
+    if(S.online[p.id]&&p.km<=4){ stroke='var(--ink)'; ink='var(--ink)'; }
+    if(!S.online[p.id]){ fill='var(--surface-2)'; stroke='var(--line)'; ink='var(--line)'; }
+    if(assigned.has(p.id)){ fill='var(--accent)'; stroke='var(--accent)'; ink='var(--accent-ink)'; } else if(offered.has(p.id)){ fill='var(--amber)'; stroke='var(--amber)'; ink='#fff'; }
+    if(opts.highlight===p.id){ stroke='var(--ink)'; }
+    const label=opts.labels?'<text x="'+(p.x+14)+'" y="'+(p.y+4)+'" font-size="10.5" fill="var(--ink)" font-family="IBM Plex Sans, sans-serif">'+p.name+(S.online[p.id]?'':' (offline)')+'</text>':'';
+    return '<g><rect x="'+(p.x-9)+'" y="'+(p.y-9)+'" width="18" height="18" rx="5" fill="'+fill+'" stroke="'+stroke+'" stroke-width="1.6"/><path d="M'+(p.x-1.6)+' '+(p.y-5)+'h3.2v3.4h3.4v3.2h-3.4V'+(p.y+5)+'h-3.2v-3.4H'+(p.x-5)+'v-3.2h3.4z" fill="'+ink+'"/>'+label+'</g>'; }).join('');
+  let routes='', dots='';
+  orders.filter(o=>o.riderId&&!o.done).forEach(o=>{ const p=partner(o.partnerId), r=rider(o.riderId);
+    routes+='<line x1="'+r.x+'" y1="'+r.y+'" x2="'+p.x+'" y2="'+p.y+'" stroke="var(--muted)" stroke-width="2" stroke-dasharray="4 4"/><line x1="'+p.x+'" y1="'+p.y+'" x2="'+CUSTOMER.x+'" y2="'+CUSTOMER.y+'" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/>';
+    const pos=riderPos(o); dots+='<g class="rider-dot" data-oid="'+o.id+'" transform="translate('+pos.x+' '+pos.y+')"><circle r="11" fill="var(--accent)" opacity=".18"/><circle r="6.5" fill="var(--ink)" stroke="var(--surface)" stroke-width="2"/></g>'; });
+  if(opts.riderIdle){ const r=rider(opts.riderIdle); dots+='<g transform="translate('+r.x+' '+r.y+')"><circle r="6.5" fill="var(--ink)" stroke="var(--surface)" stroke-width="2"/></g>'; }
+  return '<svg viewBox="0 0 600 420" role="img" aria-label="Map of the Andheri service area"><rect width="600" height="420" fill="var(--sea)"/><path d="M150 0 C172 60 140 110 166 160 C188 206 152 242 178 292 C198 336 172 380 192 420 L600 420 L600 0 Z" fill="var(--land)"/>'+
+    '<g fill="none" stroke-linecap="round"><path d="M215 0 C230 120 205 230 232 420" stroke="var(--road-edge)" stroke-width="9"/><path d="M215 0 C230 120 205 230 232 420" stroke="var(--road)" stroke-width="6"/><path d="M300 0 C292 140 312 260 300 420" stroke="var(--road-edge)" stroke-width="9"/><path d="M300 0 C292 140 312 260 300 420" stroke="var(--road)" stroke-width="6"/><path d="M400 0 L404 420" stroke="var(--road-edge)" stroke-width="13"/><path d="M400 0 L404 420" stroke="var(--road)" stroke-width="9"/><path d="M166 170 L600 210" stroke="var(--road-edge)" stroke-width="8"/><path d="M166 170 L600 210" stroke="var(--road)" stroke-width="5"/></g>'+
+    '<g font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--muted)" letter-spacing=".06em"><text x="412" y="40">W. EXPRESS HWY</text><text x="306" y="22">S.V. ROAD</text><text x="222" y="22">LINK RD</text><text x="40" y="214" transform="rotate(-90 60 214)">ARABIAN SEA</text></g>'+
+    '<g font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="600" fill="var(--muted)"><text x="340" y="60">Jogeshwari</text><text x="326" y="150">Andheri W</text><text x="440" y="250">Andheri E</text><text x="250" y="320">Juhu</text><text x="196" y="94">Versova</text><text x="290" y="408">Bandra</text></g>'+
+    '<circle cx="'+CUSTOMER.x+'" cy="'+CUSTOMER.y+'" r="150" fill="var(--accent)" fill-opacity=".05" stroke="var(--accent)" stroke-dasharray="5 5"/><text x="'+(CUSTOMER.x+108)+'" y="'+(CUSTOMER.y+118)+'" font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--accent)">4 km radius</text>'+
+    routes+pins+'<g transform="translate('+CUSTOMER.x+' '+CUSTOMER.y+')"><circle r="13" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/><path d="M-6 1 L0 -5 L6 1 V7 H-6 Z" fill="var(--ink)"/></g>'+dots+'</svg>';
+}
+function rxPaper(X, opts){
+  opts=opts||{}; const regMissing=!X.reg, old=(Date.now()-new Date(X.date+'T00:00:00'))/864e5>183;
+  return '<div class="'+(opts.ai?'show-ai':'')+' '+(opts.scanning?'scanning':'')+'"><div class="rx-paper"><div class="rx-head"><div><div class="rx-doc ai-field" data-tag="Doctor · 98%">'+X.doctor+'</div><div class="rx-qual">'+X.quals+'</div><div class="rx-clinic">'+X.clinic+'</div></div>'+
+    '<div><span class="rx-reg ai-field '+(regMissing?'missing':'')+'" data-tag="'+(regMissing?'Reg. no. missing':'Reg. no. · 97%')+'">Reg. No. '+(regMissing?'________':X.reg)+'</span></div></div>'+
+    '<div class="rx-meta"><span class="ai-field" data-tag="Patient · 95%">Patient: <span class="hand">'+X.patient+'</span> <span class="small">('+X.age+')</span></span><span class="ai-field '+(old?'missing':'')+'" data-tag="'+(old?'Older than 6 months':'Date · 99%')+'">Date: <span class="hand">'+fmtDate(X.date)+'</span></span></div>'+
+    '<div class="rx-symbol" aria-hidden="true">℞</div><ol class="rx-lines">'+X.items.map(it=>'<li class="ai-field" data-tag="'+MEDS[it.med].salt+' · '+it.conf+'%"><span class="hand">'+it.line+'</span></li>').join('')+'</ol>'+
+    '<div style="margin-top:6px"><span class="ai-field '+(X.sub==='no'?'missing':'')+'" data-tag="'+(X.sub==='no'?'Substitution: NOT allowed · 96%':'Substitution: allowed · 94%')+'"><span class="hand">'+(X.sub==='no'?'Do not substitute':'Generic substitution permitted')+'</span></span></div>'+
+    '<div class="rx-sign"><svg width="120" height="34" viewBox="0 0 120 34" aria-hidden="true"><path d="M4 24 C14 4 22 30 30 16 S44 6 50 22 S66 28 72 12 S90 8 96 20 S110 26 116 14" fill="none" stroke="var(--hand)" stroke-width="2" stroke-linecap="round"/></svg></div></div></div>';
+}
+function rxView(rx,opts){ if(!rx) return '<div class="empty">No prescription needed.</div>'; return rx.kind==='sample'?rxPaper(SAMPLES[rx.key],opts):'<img class="rx-img" src="'+rx.data+'" alt="Uploaded prescription">'; }
+function journey(o){
+  return '<ol class="journey">'+o.log.map(e=>'<li><span class="t">'+fmt(e.t)+'</span><span class="node '+(e.kind==='sys'?'sys':e.kind==='warn'?'warn':e.kind==='bad'?'bad':'')+'"></span><span><span class="what">'+esc(e.what)+'</span><br><span class="who">'+e.who+'</span></span></li>').join('')+'</ol>';
+}
+function catalogue(q){
+  q=(q||'').trim().toLowerCase();
+  const list=Object.keys(MEDS).filter(k=>!q||MEDS[k].brand.toLowerCase().includes(q)||MEDS[k].salt.toLowerCase().includes(q)).slice(0,6);
+  if(!list.length) return '<div class="small muted">No medicine matches “'+esc(q)+'”.</div>';
+  return list.map(k=>{ const m=MEDS[k], n=PARTNERS.filter(p=>inService(p)&&okStock(p.id,k,1)).length;
+    return '<div class="item"><span><span class="name">'+m.brand+'</span> '+(m.rx?'<span class="chip warn">Rx</span>':'<span class="chip">No Rx needed</span>')+'<br><span class="small muted">'+m.salt+' '+m.strength+' · '+m.pack+' · '+(n?n+' shops nearby':'not stocked nearby')+'</span></span><span style="text-align:right"><b>'+rs(m.mrp)+'</b><br><button class="btn sm" data-a="cart-add" data-med="'+k+'">Add</button></span></div>'; }).join('');
+}
+function header(app){
+  const a=APPS.find(x=>x.key===app);
+  const l=syncLabel(); const sync='<span class="chip '+l[0]+'" id="syncChip" title="Changes made in one app appear in the others within a second or two">'+esc(l[1])+'</span>';
+  return '<header class="topbar"><div class="top-row"><div class="brand"><div class="brand-mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M7 1h6v6h6v6h-6v6H7v-6H1V7h6z" fill="#fff"/></svg></div><div><h1>Medi60 <span class="muted" style="font-weight:500">· '+a.label+'</span></h1><p>'+a.who+'</p></div></div>'+
+    '<div class="row" style="margin-left:auto;gap:10px;flex-wrap:wrap">'+sync+'<label class="small muted" for="appSwitch">Switch app</label><select id="appSwitch" class="sel">'+APPS.map(x=>'<option value="'+x.key+'" '+(x.key===app?'selected':'')+'>'+x.label+'</option>').join('')+'<option value="">All apps</option></select></div></div></header>';
+}
+
+/* ===================== Landing ===================== */
+function viewLanding(){
+  const steps=[['customer','Customer orders'],['pharmacist','Pharmacist verifies'],['partner','Shop accepts and packs'],['rider','Rider delivers'],['customer','Customer receives']];
+  return '<header class="topbar"><div class="top-row"><div class="brand"><div class="brand-mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M7 1h6v6h6v6h-6v6H7v-6H1V7h6z" fill="#fff"/></svg></div><div><h1>Medi60</h1><p>Prescription medicines delivered in 60 minutes · Live prototype</p></div></div><span class="chip '+syncLabel()[0]+'" id="syncChip" style="margin-left:auto">'+esc(syncLabel()[1])+'</span></div></header>'+
+    '<main class="desk col" style="gap:20px">'+
+    '<section class="col" style="gap:8px;max-width:760px"><span class="eyebrow">Five apps, one order</span><h2 style="font-size:30px">Open each app on its own tab, laptop or phone</h2><p class="muted" style="margin:0">Each person in your group runs one app. When the customer places an order, it appears in the pharmacist console; once approved it reaches the best partner shop, then a rider, and back to the customer. All apps share one live cloud database, so they can run on different devices signed in to claude.ai.</p></section>'+
+    '<div class="flow">'+steps.map((s,i)=>'<div class="flow-step"><span class="mono small muted">'+(i+1)+'</span><b>'+s[1]+'</b><span class="small muted">'+APPS.find(a=>a.key===s[0]).label+'</span></div>'+(i<steps.length-1?'<span class="flow-arrow" aria-hidden="true">→</span>':'')).join('')+'</div>'+
+    '<div class="app-cards">'+APPS.map(a=>'<a class="app-card" href="#'+a.key+'"><span class="eyebrow">'+(a.mobile?'Mobile web app':'Desktop web app')+'</span><h3>'+a.label+'</h3><p class="small muted" style="margin:0">'+a.who+'</p><p style="margin:0">'+a.does+'</p><span class="btn sm primary" style="align-self:flex-start">Open '+a.label+'</span></a>').join('')+'</div>'+
+    '<div class="card pad col" style="max-width:760px"><b>How to set up for the presentation</b><ol class="tips"><li>Open this link on each device or tab (a phone works well for the customer and rider apps). Everyone must be signed in to claude.ai with access to this page.</li><li>Pick a different app on each. The green <b>Cloud sync on</b> badge confirms the live database is connected.</li><li>Use the <b>Ops control tower</b> to set the clock speed, pause while you talk, and reset demo data before you start.</li><li>Without the database (for example, opened offline), tabs on one computer still sync, and any app can switch to the others from its <b>Switch app</b> menu.</li></ol></div>'+
+    '</main>';
+}
+
+/* ===================== Customer app ===================== */
+function viewCustomer(){
+  let o=local.trackId?getOrder(local.trackId):null;
+  let body='', title='', back='';
+  if(o){
+    title='Order '+o.id; back='<button class="btn sm ghost" data-a="c-home">Home</button>';
+    if(o.result==='cancelled'){
+      const rr=o.rejectReasons||[];
+      body='<div class="card pad col" style="border-color:var(--red)"><span class="chip bad" style="align-self:flex-start">'+(rr.length?'Prescription not accepted':'Order cancelled')+'</span><h3>'+(rr.length?'We could not verify your prescription':'This order was cancelled')+'</h3>'+(rr.length?'<ul style="margin:0;padding-left:18px">'+rr.map(r=>'<li>'+esc(r)+'</li>').join('')+'</ul>':'<div>'+esc(o.cancelReason||'')+'</div>')+'<div class="small muted">'+(o.payment==='refunded'?'Your payment of '+rs(o.amount)+' has been refunded.':o.payMethod==='COD'?'Cash on delivery: you were not charged.':'The '+rs(o.amount)+' hold on your '+o.payMethod+' has been released. You were not charged.')+'</div></div>'+
+        '<button class="btn primary block" data-a="c-home">'+(rr.length?'Upload a new prescription':'Back to home')+'</button>'+(rr.length?'<button class="btn block" data-a="noop">Book a 10-minute doctor teleconsult · ₹199</button>':'');
+    } else if(o.result==='delivered'){
+      body='<div class="card pad col" style="border-color:var(--green);background:var(--green-soft)"><span class="eyebrow">Delivered</span><h3 style="font-size:24px">In '+Math.round(o.deliveredAt)+' minutes</h3><span class="small">Handed over by '+rider(o.riderId).name+' after OTP check.</span></div>'+
+        '<div class="card pad col"><b>Digital invoice</b><div class="small muted">'+partner(o.partnerId).name+' · GST invoice</div><table><thead><tr><th>Item</th><th>Batch</th><th>Expiry</th><th class="num">Amt</th></tr></thead><tbody>'+
+        o.items.map(it=>{ const s=stock(o.partnerId,it.med)||{batch:'—',exp:0}; return '<tr><td>'+MEDS[it.med].brand+' × '+it.qty+(it.orig?'<br><span class="small muted">substitute for '+MEDS[it.orig].brand+'</span>':'')+'</td><td class="mono small">'+s.batch+'</td><td class="small">'+monthLabel(s.exp)+'</td><td class="num">'+rs(MEDS[it.med].mrp*it.qty)+'</td></tr>'; }).join('')+
+        '</tbody></table><div class="row" style="justify-content:space-between;font-weight:600"><span>'+(o.payMethod==='COD'?'Paid in cash':'Paid · '+o.payMethod)+'</span><span>'+rs(o.amount)+'</span></div></div>'+
+        '<div class="card pad col" style="gap:6px"><b>Rate this delivery</b><div class="row" style="gap:4px">'+[1,2,3,4,5].map(v=>'<button class="btn sm '+((o.rating||0)>=v?'primary':'')+'" data-a="c-rate" data-id="'+o.id+'" data-v="'+v+'" aria-label="'+v+' star'+(v>1?'s':'')+'">★</button>').join('')+'</div><span class="small muted">'+(o.rating?'Thanks: you rated '+o.rating+' of 5.':'Tap a star.')+'</span></div>'+
+        '<div class="card pad row" style="justify-content:space-between"><span><b>Refill reminder</b><br><span class="small muted">We’ll remind you 3 days before you run out.</span></span><label class="switch"><input type="checkbox" checked aria-label="Refill reminder"></label></div>'+
+        '<div class="card pad row" style="justify-content:space-between"><span><b>Daily dose reminders</b><br><span class="small muted">A nudge at each dose time on the prescription.</span></span><label class="switch"><input type="checkbox" aria-label="Daily dose reminders"></label></div>'+
+        '<button class="btn block" data-a="c-reorder" data-id="'+o.id+'">Reorder these medicines</button><button class="btn primary block" data-a="c-home">Back to home</button>';
+    } else {
+      const steps=[['Prescription verified',['CREATED','RX_UNDER_REVIEW','RX_QUERY']],['Pharmacy confirmed',['RX_APPROVED','MATCHING','SUBSTITUTION_PENDING','PARTIAL_PENDING','OFFERED_TO_PARTNER']],['Packed and sealed',['PARTNER_ACCEPTED','PACKING']],['Out for delivery',['READY_FOR_PICKUP','PICKED_UP','OUT_FOR_DELIVERY']]];
+      let cur=steps.findIndex(s=>s[1].includes(o.status)); if(!o.needsRx&&cur===0) cur=1;
+      const stepper='<div class="steps-mini">'+steps.map((s,i)=>'<div class="'+(i<cur?'done':i===cur?'now':'')+'"><i>'+(i<cur?'✓':i+1)+'</i><span>'+(i===0&&!o.needsRx?'No prescription needed':s[0])+'</span></div>').join('')+'</div>';
+      let sheet='';
+      if(o.status==='RX_QUERY') sheet='<div class="sheet col"><span class="chip warn" style="align-self:flex-start">Question from the pharmacist</span><div>“'+esc(o.query||'')+'”</div><div class="small muted">Your order clock is paused until you reply.</div><label class="btn sm primary" for="reupFile" style="align-self:flex-start">Upload a new photo</label><input id="reupFile" type="file" accept="image/*" style="display:none"><div class="small muted">Or send a saved prescription:</div>'+Object.keys(SAMPLES).map(k=>'<button class="item" data-a="c-reup" data-key="'+k+'" style="text-align:left;cursor:pointer;width:100%"><span><span class="name">'+SAMPLES[k].patient+' · '+SAMPLES[k].label+'</span><br><span class="small muted">'+SAMPLES[k].doctor+' · dated '+fmtDate(SAMPLES[k].date)+'</span></span><span class="chip acc">Send</span></button>').join('')+'</div>';
+      else if(o.status==='SUBSTITUTION_PENDING') sheet=o.subApproved?'<div class="sheet col"><span class="chip warn" style="align-self:flex-start">Your approval needed</span>'+o.subs.map(s=>'<div><b>'+MEDS[s.from].brand+'</b> is not stocked nearby. Our pharmacist approved <b>'+MEDS[s.to].brand+'</b>: same salt, strength and form.</div><div class="row" style="justify-content:space-between"><span class="small muted">Price difference</span><b style="color:var(--green)">'+rs((MEDS[s.to].mrp-MEDS[s.from].mrp)*o.items[s.i].qty)+'</b></div>').join('')+'<div class="row" style="flex-wrap:wrap"><button class="btn primary" data-a="c-subok" style="flex:1">Accept substitute</button><button class="btn" data-a="c-subkeep">Keep prescribed brand</button></div><div class="row" style="flex-wrap:wrap"><button class="btn sm ghost" data-a="c-subrm">Remove this item</button><button class="btn sm ghost" data-a="c-cancel">Cancel order</button></div><div class="small muted">Keeping the prescribed brand may mean a farther shop or a partial order.</div></div>':'<div class="sheet small">The nearest shop doesn’t have one prescribed brand. Your doctor permits substitution, so our pharmacist is checking a same-salt alternative.</div>';
+      else if(o.status==='PARTIAL_PENDING'){ const p=partner(o.partial.pid), miss=o.items.filter((_,i)=>!o.partial.keep.includes(i)).map(it=>MEDS[it.med].brand);
+        sheet='<div class="sheet col"><span class="chip warn" style="align-self:flex-start">Your choice needed</span><div>No single shop nearby has everything. <b>'+p.name+'</b> has '+o.partial.keep.length+' of '+o.items.length+' items.</div><div class="small">Not available now: '+miss.join(', ')+'</div><div class="row"><button class="btn primary" data-a="c-partial" style="flex:1">Get available items now</button><button class="btn" data-a="c-cancel">Cancel</button></div></div>'; }
+      const otp=o.status==='OUT_FOR_DELIVERY'?'<div class="card pad col" style="gap:4px;text-align:center"><span class="small muted">Share this OTP with the rider at the door</span><span class="otp">'+o.otp+'</span>'+(o.payMethod==='COD'?'<span class="small"><b>Keep '+rs(o.amount)+' cash ready</b> for the rider</span>':'')+'</div>':'';
+      const payLine=o.payMethod==='COD'?'Cash on delivery · '+rs(o.amount):o.payment==='captured'?rs(o.amount)+' paid by '+o.payMethod:rs(o.amount)+' authorised on '+o.payMethod;
+      const canCancel=!o.partnerId&&!['SUBSTITUTION_PENDING','PARTIAL_PENDING'].includes(o.status);
+      body=(o.slot?'<div class="card pad col" style="gap:2px"><span class="small muted">Scheduled delivery</span><span style="font-family:var(--display);font-size:28px;font-weight:700">'+esc(o.slot)+'</span><span class="small muted">'+payLine+'</span></div>':'<div class="card pad col" style="gap:2px"><span class="small muted">Arriving in</span><div class="row" style="align-items:baseline;gap:6px"><span style="font-family:var(--display);font-size:34px;font-weight:700" data-tick="eta" data-oid="'+o.id+'">~'+Math.ceil(etaMin(o))+'</span><span>min</span></div><span class="small muted">Promised within 60 min · '+payLine+'</span></div>')+
+        sheet+otp+'<div class="card pad">'+stepper+'</div>'+
+        (o.partnerId?'<div class="map-wrap">'+mapSVG({orders:[o]})+'</div><div class="card pad"><span>'+(o.riderId?'<b>'+rider(o.riderId).name+'</b> · ★ '+rider(o.riderId).rating+'<br><span class="small muted">'+rider(o.riderId).vehicle+' · from '+partner(o.partnerId).name+'</span>':'<b>Finding a rider…</b><br><span class="small muted">'+partner(o.partnerId).name+' is packing your order</span>')+'</span></div>':'<div class="card pad small muted">We’ll show the pharmacy and rider here once a shop confirms.</div>')+
+        (canCancel?'<button class="btn ghost block" data-a="c-cancel">Cancel order</button>':'');
+    }
+  } else if(local.custView==='upload'){
+    title='Upload prescription'; back='<button class="btn sm ghost" data-a="c-home">Back</button>';
+    body='<div class="dropzone col"><b>Photo of your prescription</b><span class="small muted">Doctor’s name, registration number, date and signature should be visible.</span><label class="btn sm" for="rxFile" style="align-self:center">Choose photo</label><input id="rxFile" type="file" accept="image/*" style="display:none"></div>'+
+      '<div class="small muted">Or pick a saved sample prescription:</div>'+Object.keys(SAMPLES).map(k=>{ const X=SAMPLES[k]; return '<button class="item" data-a="c-sample" data-key="'+k+'" style="text-align:left;cursor:pointer;width:100%"><span><span class="name">'+X.patient+' · '+X.label+'</span><br><span class="small muted">'+X.doctor+' · '+X.items.length+' medicines · dated '+fmtDate(X.date)+'</span></span><span class="chip acc">Use</span></button>'; }).join('')+
+      '<div class="small muted">Prescriptions are encrypted. Only the verifying pharmacist can see them.</div>';
+  } else if(local.custView==='reading'){
+    title='Reading prescription';
+    body='<div class="row"><span class="chip acc">AI reading</span><span class="small muted">Finding doctor, date and medicines…</span></div>'+rxPaper(SAMPLES[local.rxAttach.key],{scanning:true});
+  } else if(local.custView==='cart'){
+    title='Your cart'; back='<button class="btn sm ghost" data-a="c-home">Back</button>';
+    const items=local.cart, tt=totals(items), needsRx=items.some(c=>MEDS[c.med].rx), n=items.length?rankPartners(items).filter(r=>r.eligible).length:0;
+    const ra=local.rxAttach, dsNo=!!(ra&&ra.kind==='sample'&&SAMPLES[ra.key].sub==='no'), payLabel={UPI:'UPI',Card:'Card',COD:'Cash on delivery'}[local.pay||'UPI'];
+    const opts='<div class="card pad col" style="gap:8px"><b>Delivery and payment</b>'+
+      (needsRx?'<div class="row small" style="justify-content:space-between;flex-wrap:wrap"><span>Doctor’s instruction (read by AI)</span>'+(ra&&ra.kind==='sample'?(dsNo?'<span class="chip bad">Do not substitute</span>':'<span class="chip ok">Substitution permitted</span>'):'<span class="chip">Pharmacist will check</span>')+'</div><label class="row small"><input type="checkbox" id="allowSub" '+(local.allowSub&&!dsNo?'checked':'')+' '+(dsNo?'disabled':'')+'> '+(dsNo?'Substitutes are locked: the doctor wrote “do not substitute”':'If the pharmacist approves a same-salt substitute, apply it without asking me')+'</label>':'')+
+      '<label class="field" for="slotSel">When<select id="slotSel" class="sel">'+SLOTS.map(s=>'<option value="'+s[0]+'" '+((local.slot||'')===s[0]?'selected':'')+'>'+s[1]+'</option>').join('')+'</select></label>'+
+      '<label class="field" for="paySel">Pay with<select id="paySel" class="sel">'+[['UPI','UPI'],['Card','Card'],['COD','Cash on delivery']].map(x=>'<option value="'+x[0]+'" '+((local.pay||'UPI')===x[0]?'selected':'')+'>'+x[1]+'</option>').join('')+'</select></label></div>';
+    const rxCard=ra?(ra.kind==='sample'?'<div class="card pad col" style="gap:6px"><div class="row" style="justify-content:space-between"><b>Prescription attached</b><span class="chip ok">AI read it</span></div><div class="small muted">'+SAMPLES[ra.key].doctor+' · '+(SAMPLES[ra.key].reg||'reg. no. not found')+' · '+fmtDate(SAMPLES[ra.key].date)+' · for '+SAMPLES[ra.key].patient+'</div><button class="btn sm ghost" data-a="c-upload" style="align-self:flex-start">Change</button></div>'
+      :'<div class="card pad col" style="gap:6px"><div class="row" style="justify-content:space-between"><b>Prescription attached</b><span class="chip warn">Add medicines below</span></div><img class="rx-img" src="'+ra.data+'" alt="Your prescription" style="max-height:170px;object-fit:contain"><div class="small muted">This photo couldn’t be read automatically. Add the medicines from it below; the pharmacist will match them.</div></div>')
+      :(needsRx?'<div class="sheet col"><b>Prescription needed</b><div class="small">Your cart has prescription medicines. Upload a prescription to continue.</div><button class="btn sm primary" data-a="c-upload" style="align-self:flex-start">Upload prescription</button></div>':'');
+    body=rxCard+(items.length?'<div class="list">'+items.map((c,i)=>{ const m=MEDS[c.med]; return '<div class="item"><span><span class="name">'+m.brand+'</span>'+(m.rx?' <span class="chip warn">Rx</span>':'')+'<br><span class="small muted">'+m.salt+' '+m.strength+' · '+m.pack+(c.conf?' · AI '+c.conf+'%':'')+'</span></span><span style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><b>'+rs(m.mrp*c.qty)+'</b><span class="qty"><button data-a="cart-dec" data-i="'+i+'" aria-label="Less">−</button><span>'+c.qty+'</span><button data-a="cart-inc" data-i="'+i+'" aria-label="More">+</button></span></span></div>'; }).join('')+'</div>':'<div class="empty">Your cart is empty.</div>')+
+      '<div class="card pad col" style="gap:8px"><b>Add medicines</b><input class="search-input" id="search" placeholder="Search brand or salt, e.g. metformin" value="'+esc(local.search)+'" autocomplete="off"><div class="list" id="results">'+catalogue(local.search)+'</div></div>'+
+      (items.length?'<div class="card pad col" style="gap:6px"><b>Deliver to</b><span class="small">'+CUSTOMER.address+'</span><div class="row" style="justify-content:space-between;flex-wrap:wrap"><span class="chip '+(n?'ok':'warn')+'">'+(local.slot?'Scheduled · '+local.slot:n?'Express · in ~45 min':'May need a substitute or partial delivery')+'</span><span class="small muted">'+n+' of 5 nearby shops have everything</span></div></div>'+opts+
+        '<div class="card pad col" style="gap:4px"><div class="row" style="justify-content:space-between"><span class="muted">Item total</span><span>'+rs(tt.sub)+'</span></div><div class="row" style="justify-content:space-between"><span class="muted">Discount (10%)</span><span>−'+rs(tt.disc)+'</span></div><div class="row" style="justify-content:space-between"><span class="muted">Delivery</span><span>'+(tt.fee?rs(tt.fee):'Free')+'</span></div><div class="row" style="justify-content:space-between;font-weight:600"><span>To pay · '+payLabel+'</span><span>'+rs(tt.total)+'</span></div></div>'+
+        (needsRx?'<label class="row small"><input type="checkbox" checked id="consent1" data-keep="1"> I consent to a registered pharmacist reviewing my prescription.</label>':'')+
+        '<button class="btn primary block" data-a="c-place" '+(needsRx&&!ra?'disabled':'')+'>'+(local.pay==='COD'?'Place order · pay '+rs(tt.total)+' in cash':'Pay '+rs(tt.total)+' and place order')+'</button><div class="small muted" style="text-align:center">'+(local.pay==='COD'?'Pay the rider in cash at the door.':'You are charged only after a pharmacy confirms.')+'</div>':'');
+  } else {
+    title='Hi Rahul';
+    const cartN=local.cart.reduce((a,c)=>a+c.qty,0), mine=S.orders.slice().reverse();
+    const live=mine.filter(o=>!o.done);
+    body=(live.length?live.map(o=>'<button class="item" data-a="c-track" data-id="'+o.id+'" style="cursor:pointer;width:100%;text-align:left;border-color:var(--accent)"><span><span class="name">Track '+o.id+'</span><br><span class="small muted">'+o.items.length+' items · '+rs(o.amount)+'</span></span>'+statusChip(o)+'</button>').join(''):'')+
+      '<div class="muted small">Delivering to Lokhandwala, Andheri (W)</div>'+
+      '<input class="search-input" id="search" placeholder="Search medicines, e.g. Dolo or cetirizine" value="'+esc(local.search)+'" autocomplete="off"><div class="list" id="results">'+(local.search?catalogue(local.search):'')+'</div>'+
+      '<div class="card pad col" style="background:var(--accent);color:var(--accent-ink);border-color:var(--accent)"><span class="eyebrow" style="color:inherit;opacity:.85">60-minute delivery</span><h3 style="font-size:19px">Upload your prescription</h3><p style="margin:0;opacity:.9">A pharmacist checks it, a nearby licensed pharmacy packs it, and it reaches you within an hour.</p><button class="btn" data-a="c-upload" style="background:var(--surface);color:var(--ink);border:0">Upload prescription</button></div>'+
+      (cartN?'<button class="item" data-a="c-cart" style="cursor:pointer;width:100%;text-align:left"><span><span class="name">Cart · '+cartN+' item'+(cartN>1?'s':'')+'</span><br><span class="small muted">'+rs(totals(local.cart).total)+' to pay</span></span><span class="chip acc">Review</span></button>':'')+
+      '<div class="card pad col" style="gap:6px"><b>Family profiles</b>'+PATIENTS.map(p=>'<div class="row small" style="justify-content:space-between"><span>'+p+'</span><span class="muted">'+FAMILY_NOTE[p]+'</span></div>').join('')+'</div>'+
+      (mine.some(o=>o.done)?'<div class="card pad col" style="gap:6px"><b>Past orders</b>'+mine.filter(o=>o.done).map(o=>'<button class="row small" data-a="c-track" data-id="'+o.id+'" style="justify-content:space-between;border:0;background:none;padding:2px 0;width:100%"><span class="mono">'+o.id+'</span>'+statusChip(o)+'</button>').join('')+'</div>':'');
+  }
+  return header('customer')+'<main class="mobile-col"><div class="row" style="justify-content:space-between"><h2>'+title+'</h2>'+back+'</div>'+body+'</main>';
+}
+
+/* ===================== Pharmacist console ===================== */
+function pharmChecks(o){
+  const c=rxChecks(o), fails=c.filter(x=>!x[1]);
+  return '<b>Checks</b><div class="list">'+c.map(x=>'<div class="row small"><span class="chip '+(x[1]?'ok':'bad')+'">'+(x[1]?'Pass':'Fail')+'</span><span>'+esc(x[0])+'</span></div>').join('')+'</div>'+
+    '<b style="margin-top:6px">Reasons if rejecting</b><div class="list">'+[['Doctor registration number missing',!c[1][1]],['Prescription older than 6 months',!c[2][1]],['Patient not on this account',!c[3][1]],['Medicines do not match the prescription',!c[4][1]],['Prescription already used',!c[5][1]],['Image unclear or incomplete',!c[0][1]],['Risky interaction not cleared',!c[8][1]]].map((r,ri)=>'<label class="row small"><input type="checkbox" class="rej" id="rej-'+o.id+'-'+ri+'" data-keep="1" value="'+r[0]+'" '+(r[1]?'checked':'')+'> '+r[0]+'</label>').join('')+'</div>'+
+    '<div class="row" style="flex-wrap:wrap;margin-top:6px"><button class="btn primary" data-a="ph-approve" data-id="'+o.id+'" '+(fails.length?'disabled':'')+'>Approve</button><button class="btn" data-a="ph-ask" data-id="'+o.id+'">Ask customer</button><button class="btn danger" data-a="ph-reject" data-id="'+o.id+'">Reject</button></div>'+
+    '<label class="field" for="askQ-'+o.id+'">Question for the customer (sent with “Ask customer”; pauses the order clock)<input id="askQ-'+o.id+'" data-keep="1" value="Please upload a clearer photo showing the doctor’s registration number."></label>'+
+    (fails.length?'<div class="small" style="color:var(--red)">'+fails.length+' check(s) failing. Correct the fields if the AI misread them, or reject.</div>':'<div class="small" style="color:var(--green)">All checks pass.</div>');
+}
+function viewPharmacist(){
+  const queue=S.orders.filter(o=>o.status==='RX_UNDER_REVIEW'||(o.status==='SUBSTITUTION_PENDING'&&!o.subApproved));
+  if(!local.pharmSel||!getOrder(local.pharmSel)||(queue.length&&!queue.some(q=>q.id===local.pharmSel)&&!local.pharmPinned)) local.pharmSel=queue[0]?queue[0].id:(local.pharmSel&&getOrder(local.pharmSel)?local.pharmSel:null);
+  const sig=queue.map(q=>q.id).join(','); if(sig!==local.pharmSig){ if(local.pharmSig!=null&&queue.some(q=>!local.pharmSig.split(',').includes(q.id))) { local.pharmPinned=false; if(queue.length) local.pharmSel=queue[queue.length-1].id; } local.pharmSig=sig; }
+  const o=local.pharmSel?getOrder(local.pharmSel):null;
+  const done=S.orders.filter(x=>x.rx&&(x.verifiedAt!=null||x.status==='RX_QUERY')).slice().reverse();
+  const left='<div class="card pad col"><span class="eyebrow">Waiting for you ('+queue.length+')</span>'+(queue.length?queue.map(q=>'<button class="item" data-a="ph-sel" data-id="'+q.id+'" style="cursor:pointer;text-align:left;width:100%;'+(q.id===local.pharmSel?'border-color:var(--accent)':'')+'"><span><span class="name">'+q.id+'</span><br><span class="small muted">'+(q.status==='RX_UNDER_REVIEW'?'Prescription · '+esc(q.fields.patient||'patient not set'):'Substitution request')+'</span></span><span class="mono small" data-tick="since" data-oid="'+q.id+'">'+fmt(simNow(q)-q.statusAt)+'</span></button>').join(''):'<div class="small muted">Nothing waiting. New prescriptions appear here instantly.</div>')+
+    (done.length?'<span class="eyebrow" style="margin-top:8px">Decided earlier</span>'+done.map(d=>'<button class="item" data-a="ph-sel" data-id="'+d.id+'" style="cursor:pointer;text-align:left;width:100%"><span><span class="name">'+d.id+'</span><br><span class="small muted">'+esc(d.fields.patient||'')+'</span></span>'+(d.status==='RX_QUERY'?'<span class="chip warn">Asked customer</span>':d.rejectReasons?'<span class="chip bad">Rejected</span>':'<span class="chip ok">Approved</span>')+'</button>').join(''):'')+
+    '<div class="small muted">Target: decide within 7 minutes.</div></div>';
+  if(!o) return header('pharmacist')+'<main class="desk"><div class="grid-3">'+left+'<div class="card pad col"><h3>No prescription selected</h3><p class="muted" style="margin:0">When a customer orders prescription medicines, the order arrives here with the prescription and AI-extracted fields.</p></div><div></div></div></main>';
+  let right='';
+  if(o.status==='RX_UNDER_REVIEW'){
+    const f=o.fields;
+    right='<div class="card pad col"><b>Fields (AI-extracted, editable)</b>'+
+      '<label class="field" for="f-doctor">Doctor<input id="f-doctor" data-field="doctor" data-id="'+o.id+'" value="'+esc(f.doctor)+'" placeholder="Doctor name as written"></label>'+
+      '<label class="field" for="f-reg">Registration no.<input id="f-reg" data-field="reg" data-id="'+o.id+'" value="'+esc(f.reg)+'" placeholder="e.g. MMC-2011/04/1234"></label>'+
+      '<label class="field" for="f-date">Prescription date<input id="f-date" type="date" data-field="date" data-id="'+o.id+'" value="'+esc(f.date)+'"></label>'+
+      '<label class="field" for="f-patient">Patient<select id="f-patient" data-field="patient" data-id="'+o.id+'"><option value="">Select…</option>'+PATIENTS.map(p=>'<option '+(f.patient===p?'selected':'')+'>'+p+'</option>').join('')+'<option '+(f.patient==='Someone else'?'selected':'')+'>Someone else</option></select></label>'+
+      '<label class="field" for="f-docsub">Doctor’s substitution instruction<select id="f-docsub" data-field="docSub" data-id="'+o.id+'"><option value="allowed" '+(f.docSub!=='no'?'selected':'')+'>Substitution permitted</option><option value="no" '+(f.docSub==='no'?'selected':'')+'>Do not substitute</option></select></label>'+
+      (o.rx.kind==='upload'?'<label class="row small"><input type="checkbox" data-field="match" data-id="'+o.id+'" '+(f.match?'checked':'')+'> The medicines in the cart match this prescription</label>':'')+
+      (interactionsOf(o.items).length?'<label class="row small" style="color:var(--amber)"><input type="checkbox" data-field="ixAck" data-id="'+o.id+'" '+(f.ixAck?'checked':'')+'> I have reviewed the interaction with the patient or doctor</label>':'')+
+      '<div><b>Cart</b><div class="list" style="margin-top:6px">'+o.items.map(it=>'<div class="row small" style="justify-content:space-between"><span>'+MEDS[it.med].brand+' × '+it.qty+'</span><span class="muted">'+MEDS[it.med].salt+'</span></div>').join('')+'</div></div></div>'+
+      '<div class="card pad col" id="pharmChecks">'+pharmChecks(o)+'</div>';
+  } else if(o.status==='SUBSTITUTION_PENDING'&&!o.subApproved){
+    right='<div class="sheet col"><b>Substitution request · '+o.id+'</b>'+o.subs.map(s=>'<table><tbody><tr><td class="small muted">Prescribed</td><td>'+MEDS[s.from].brand+'</td></tr><tr><td class="small muted">Proposed</td><td><b>'+MEDS[s.to].brand+'</b></td></tr><tr><td class="small muted">Salt · strength · form</td><td>'+MEDS[s.to].salt+' · '+MEDS[s.to].strength+' · '+MEDS[s.to].form+' (same)</td></tr><tr><td class="small muted">Best shop</td><td>'+(o.subPid?partner(o.subPid).name+' (has the substitute, not the brand)':'—')+'</td></tr><tr><td class="small muted">Doctor’s instruction</td><td><span class="chip ok">Substitution permitted</span></td></tr></tbody></table>').join('')+
+      '<button class="btn primary" data-a="ph-subok" data-id="'+o.id+'">Approve substitute</button><button class="btn" data-a="ph-subno" data-id="'+o.id+'">Reject · find the prescribed brand</button><div class="small muted">'+(o.custAllowSub?'The customer allowed substitutes at checkout, so approval applies it at once.':'The customer will be asked to accept it, keep the brand or remove the item.')+'</div></div>';
+  } else if(o.status==='RX_QUERY'){
+    right='<div class="sheet col"><span class="chip warn" style="align-self:flex-start">Waiting for the customer</span><div>You asked: “'+esc(o.query||'')+'”</div><div class="small muted">The order clock is paused. It returns to your queue when the customer sends a new prescription.</div></div>';
+  } else {
+    right='<div class="card pad col"><div class="row"><span class="chip '+(o.rejectReasons?'bad':'ok')+'">'+(o.rejectReasons?'Rejected':'Verified')+'</span><span class="small">'+(o.verifiedAt!=null?'Decided at '+fmt(o.verifiedAt)+' after order':'')+'</span></div>'+(o.rejectReasons?'<div class="small">'+o.rejectReasons.map(esc).join('; ')+'</div>':'')+'<div class="small muted">Current status: '+statusChip(o)+'</div></div>';
+  }
+  const stockCard='<div class="card pad col" style="gap:6px"><div class="row" style="justify-content:space-between"><b>Parallel stock check</b><span class="small muted">live</span></div>'+rankPartners(o.items).filter(r=>r.p.km<=4).map(r=>'<div class="row small" style="justify-content:space-between"><span>'+r.p.name+' · '+r.p.km+' km</span>'+(r.eligible?'<span class="chip ok">Full order</span>':'<span class="chip bad" title="'+esc(r.issues.join('; '))+'">'+esc(r.issues[0]||'')+'</span>')+'</div>').join('')+'</div>';
+  return header('pharmacist')+'<main class="desk"><div class="grid-3">'+left+'<div class="card pad col"><div class="row" style="justify-content:space-between"><b>Prescription · '+o.id+'</b><span class="small muted">'+(o.rx.kind==='sample'?'AI highlights shown':'Customer photo')+'</span></div>'+rxView(o.rx,{ai:true})+'</div><div class="col">'+right+stockCard+'</div></div></main>';
+}
+
+/* ===================== Partner app ===================== */
+function viewPartner(){
+  const pid=local.shop, p=partner(pid);
+  const mineOffers=S.orders.filter(o=>o.status==='OFFERED_TO_PARTNER'&&lastOffer(o).pid===pid);
+  const mineWork=S.orders.filter(o=>o.partnerId===pid&&!o.done);
+  const mineDone=S.orders.filter(o=>o.partnerId===pid&&o.done);
+  const missed=S.orders.filter(o=>o.offers.some(x=>x.pid===pid&&(x.resp==='timeout'||x.resp==='declined')));
+  const tabs='<div class="seg"><button data-ptab="orders" aria-pressed="'+(local.shopTab==='orders')+'">Orders'+(mineOffers.length?' ('+mineOffers.length+' new)':'')+'</button><button data-ptab="inventory" aria-pressed="'+(local.shopTab==='inventory')+'">Inventory</button><button data-ptab="earnings" aria-pressed="'+(local.shopTab==='earnings')+'">Earnings</button></div>';
+  let body='';
+  if(local.shopTab==='inventory'){
+    const inv=S.inv[pid]||{};
+    body='<div class="card pad col"><div class="row" style="justify-content:space-between;flex-wrap:wrap"><b>Stock synced from billing software</b><span class="small muted">Change stock here to set up a live scenario</span></div><div class="table-wrap"><table><thead><tr><th>Medicine</th><th>Salt</th><th class="num">Strips</th><th>Batch</th><th>Expiry</th><th>Status</th><th></th></tr></thead><tbody>'+
+      Object.keys(inv).map(m=>{ const s=stock(pid,m), flag=s.qty===0?'<span class="chip bad">Out of stock</span>':s.exp<3?'<span class="chip bad">Near expiry · blocked</span>':s.qty<5?'<span class="chip warn">Low</span>':'<span class="chip ok">OK</span>';
+        return '<tr><td>'+MEDS[m].brand+'</td><td class="small">'+MEDS[m].salt+' '+MEDS[m].strength+'</td><td class="num"><span class="qty"><button data-a="inv-dec" data-med="'+m+'" aria-label="Less">−</button><span>'+s.qty+'</span><button data-a="inv-inc" data-med="'+m+'" aria-label="More">+</button></span></td><td class="mono small">'+s.batch+'</td><td class="small">'+monthLabel(s.exp)+'</td><td>'+flag+'</td><td><button class="btn sm" data-a="inv-oos" data-med="'+m+'">'+(s.qty?'Mark out of stock':'Restock 10')+'</button></td></tr>'; }).join('')+
+      '</tbody></table></div><div class="small muted">Items expiring within 3 months are never offered to customers.</div></div>';
+  } else if(local.shopTab==='earnings'){
+    const del=mineDone.filter(o=>o.result==='delivered'), gross=del.reduce((a,o)=>a+totals(o.items).sub,0), st=S.offerStats[pid]||{accepted:0,missed:0};
+    body='<div class="kpis"><div class="card kpi"><span class="small muted">Orders delivered</span><div class="v">'+del.length+'</div></div><div class="card kpi"><span class="small muted">Accepted / missed</span><div class="v">'+st.accepted+' / '+st.missed+'</div></div><div class="card kpi"><span class="small muted">Acceptance score</span><div class="v">'+Math.round(acceptRate(pid)*100)+'%</div><div class="d muted">affects your ranking</div></div><div class="card kpi"><span class="small muted">Payout</span><div class="v">'+rs(gross*0.92)+'</div><div class="d muted">after 8% commission</div></div></div>';
+  } else {
+    const offerCards=mineOffers.map(o=>{ const off=lastOffer(o), tt=totals(o.items);
+      return '<div class="card pad col" style="border:2px solid var(--amber)"><div class="row" style="justify-content:space-between;align-items:flex-start"><div><span class="chip warn">New order · respond now</span><h3 style="font-size:20px;margin-top:6px">'+o.id+' · '+o.items.length+' item'+(o.items.length>1?'s':'')+'</h3><div class="small muted">'+(o.needsRx?'Prescription verified by '+PHARMACIST:'No prescription items')+' · deliver to Lokhandwala'+(o.payMethod==='COD'?' · cash on delivery':'')+(o.slot?' · scheduled '+esc(o.slot):'')+((o.radius||4)>4?' · widened search':'')+'</div></div><div class="timer-ring" data-tick="ring" data-oid="'+o.id+'"><span data-tick="offer" data-oid="'+o.id+'">'+fmt(Math.max(0,3-(simNow(o)-off.at)))+'</span></div></div>'+
+        '<table><thead><tr><th>Medicine</th><th class="num">Qty</th><th class="num">Your stock</th></tr></thead><tbody>'+o.items.map(it=>{ const s=stock(pid,it.med); return '<tr><td>'+MEDS[it.med].brand+(it.orig?' <span class="chip acc">approved substitute</span>':'')+'<br><span class="small muted">'+MEDS[it.med].salt+' '+MEDS[it.med].strength+' · min. 3 months shelf life</span></td><td class="num">'+it.qty+'</td><td class="num">'+(s?s.qty:0)+'</td></tr>'; }).join('')+'</tbody></table>'+
+        '<div class="row" style="justify-content:space-between"><span class="muted">Your payout</span><b>'+rs(tt.sub*0.92)+'</b></div><div class="row"><button class="btn primary" data-a="p-accept" data-id="'+o.id+'" style="flex:1">Accept order</button><button class="btn" data-a="p-decline" data-id="'+o.id+'">Decline</button></div><div class="small muted">No response in 3 minutes sends the order to the next shop and lowers your ranking.</div></div>'; }).join('');
+    const workCards=mineWork.map(o=>{
+      if(o.status==='PACKING'){ const all=o.items.every(it=>it.scanned);
+        return '<div class="card pad col"><div class="row" style="justify-content:space-between;flex-wrap:wrap"><h3>Pick and pack · '+o.id+'</h3><span class="chip acc">'+(o.riderStage==='at_shop'?rider(o.riderId).name+' is at your counter':o.riderId?rider(o.riderId).name+' is on the way':'Finding a rider')+'</span></div><table><thead><tr><th>Medicine</th><th class="num">Qty</th><th>Batch</th><th>Expiry</th><th></th></tr></thead><tbody>'+
+          o.items.map((it,i)=>{ const s=stock(pid,it.med); return '<tr><td>'+MEDS[it.med].brand+'</td><td class="num">'+it.qty+'</td><td class="mono small">'+(it.scanned?s.batch:'—')+'</td><td class="small">'+(it.scanned?monthLabel(s.exp):'—')+'</td><td>'+(it.scanned?'<span class="chip ok">Scanned</span>':'<button class="btn sm" data-a="p-scan" data-id="'+o.id+'" data-i="'+i+'">Scan</button>')+'</td></tr>'; }).join('')+
+          '</tbody></table><label class="row small"><input type="checkbox" data-seal="'+o.id+'" id="seal-'+o.id+'" '+(all?'':'disabled')+' '+(o.sealed?'checked':'')+'> Packed in a tamper-proof Medi60 bag and sealed'+(all?'':' <span class="muted">(scan every item first)</span>')+'</label><button class="btn primary" data-a="p-ready" data-id="'+o.id+'" '+(all&&o.sealed?'':'disabled')+'>Mark ready for pickup</button>'+(all&&!o.sealed?'<div class="small" style="color:var(--amber)">Seal the bag and tick the box to enable \u201cMark ready\u201d.</div>':'')+'<div class="small muted">Batch and expiry go on the customer’s invoice for traceability and recalls.</div></div>'; }
+      if(o.status==='READY_FOR_PICKUP') return '<div class="card pad col"><span class="chip ok" style="align-self:flex-start">Ready</span><h3>'+o.id+' · waiting for rider pickup</h3><div class="small muted">'+(o.riderId?rider(o.riderId).name+' · '+rider(o.riderId).vehicle+' · '+(o.riderStage==='at_shop'?'at your counter':'on the way'):'No rider assigned yet')+'</div><div class="small">Hand over only after the rider scans bag code <span class="mono">'+o.id+'</span>.</div></div>';
+      return '<div class="card pad col"><span class="chip ok" style="align-self:flex-start">Handed over</span><h3>'+o.id+' is with the rider</h3></div>';
+    }).join('');
+    body=(offerCards+workCards)||'<div class="card pad col"><h3>No orders right now</h3><div class="small muted">'+(S.online[pid]?'New orders appear here with a 3-minute timer.':'Your shop is offline, so it receives no orders.')+(p.km>4?' This shop is beyond 4 km, so it gets orders only when Ops widens the search to 8 km.':'')+'</div></div>';
+    if(missed.length||mineDone.length) body+='<div class="card pad col"><b>Earlier</b><table><tbody>'+mineDone.slice().reverse().map(o=>'<tr><td class="mono">'+o.id+'</td><td>'+statusChip(o)+'</td></tr>').join('')+missed.filter(o=>o.partnerId!==pid).map(o=>'<tr><td class="mono">'+o.id+'</td><td><span class="chip warn">'+(o.offers.find(x=>x.pid===pid).resp==='timeout'?'Missed':'Declined')+' · went to another shop</span></td></tr>').join('')+'</tbody></table></div>';
+  }
+  return header('partner')+'<main class="desk col" style="gap:16px"><div class="row" style="justify-content:space-between;flex-wrap:wrap"><div><h2>'+p.name+'</h2><div class="small muted">'+p.area+' · '+p.km+' km from customer · '+(p.cold?'cold-chain ready':'no cold storage')+'</div></div><div class="row" style="flex-wrap:wrap"><label class="small muted" for="shopSel">Signed in as</label><select id="shopSel" class="sel">'+PARTNERS.map(x=>'<option value="'+x.id+'" '+(x.id===pid?'selected':'')+'>'+x.name+'</option>').join('')+'</select><label class="switch"><input type="checkbox" id="shopOnline" '+(S.online[pid]?'checked':'')+'> '+(S.online[pid]?'Online':'Offline')+'</label></div></div>'+tabs+body+'</main>';
+}
+
+/* ===================== Rider app ===================== */
+function viewRider(){
+  const me=local.rider, r=rider(me), on=S.riderOnline[me];
+  const task=S.orders.find(o=>o.riderId===me&&!o.done);
+  const mine=S.orders.filter(o=>o.riderId===me&&o.result==='delivered');
+  let body='<div class="card pad row" style="justify-content:space-between"><span><b>'+(on?'You are online':'You are offline')+'</b><br><span class="small muted">'+(on?'Andheri W zone':'Go online to receive deliveries')+'</span></span><label class="switch"><input type="checkbox" id="riderOnline" '+(on?'checked':'')+' aria-label="Online"></label></div>';
+  if(task){
+    const p=partner(task.partnerId); let action='';
+    if(task.riderStage==='to_shop') action='<button class="btn primary block" data-a="r-arrive" data-id="'+task.id+'">Arrived at pharmacy</button><div class="small muted" style="text-align:center">Tapping early skips the ride and moves the clock forward.</div>';
+    else if(task.status==='PACKING') action='<button class="btn block" disabled>Waiting for the shop to seal the bag</button>';
+    else if(task.status==='READY_FOR_PICKUP') action='<button class="btn primary block" data-a="r-pickup" data-id="'+task.id+'">Scan bag and pick up</button>';
+    else if(task.status==='OUT_FOR_DELIVERY'&&!task.atDoor) action='<button class="btn primary block" data-a="r-door" data-id="'+task.id+'">Reached customer</button><div class="small muted" style="text-align:center">Tapping early skips the ride and moves the clock forward.</div>';
+    else if(task.status==='OUT_FOR_DELIVERY') action='<div class="col" style="gap:8px"><label for="otpIn" class="small"><b>Enter the OTP the customer reads out</b></label><input id="otpIn" data-keep="1" inputmode="numeric" maxlength="4" autocomplete="off" class="otp" style="text-align:center;border:1px solid var(--line);border-radius:10px;padding:6px;background:var(--surface);width:100%"><button class="btn primary block" data-a="r-deliver" data-id="'+task.id+'">Verify OTP and complete</button></div>';
+    const leg=(task.riderStage==='to_shop'||task.riderStage==='at_shop')?'Pickup':'Drop';
+    body+='<div class="card pad col" style="gap:6px;border-color:var(--accent)"><div class="row" style="justify-content:space-between"><span class="chip acc">Current task · '+leg+'</span><span class="small mono">'+task.id+'</span></div><div><b>Pickup:</b> '+p.name+'<br><span class="small muted">'+p.area+'</span></div><div><b>Drop:</b> '+esc(task.fields?task.fields.patient:CUSTOMER.name)+'<br><span class="small muted">'+CUSTOMER.address+'</span></div><div class="row small" style="flex-wrap:wrap"><span class="chip">Sealed bag</span><span class="chip">OTP on delivery</span>'+(task.payMethod==='COD'?'<span class="chip warn">Collect '+rs(task.amount)+' cash</span>':'')+'<span class="chip">Earn ₹62</span></div></div><div class="map-wrap">'+mapSVG({orders:[task]})+'</div>'+action;
+  } else {
+    const others=active().filter(o=>o.riderId&&o.riderId!==me);
+    if(others.length) body+=others.map(o=>'<div class="sheet col"><b>'+o.id+' went to '+rider(o.riderId).name+'</b><div class="small">The nearest free rider gets each task. Sign in as '+rider(o.riderId).name+' to continue this delivery.</div><button class="btn sm primary" data-a="r-switch" data-r="'+o.riderId+'" style="align-self:flex-start">Sign in as '+rider(o.riderId).name+'</button></div>').join('');
+    body+='<div class="map-wrap">'+mapSVG({orders:[],riderIdle:me})+'</div><div class="card pad small muted">'+(on?'No task right now. When a shop accepts an order, the nearest free rider is assigned.':'You won’t get tasks while offline.')+'</div>';
+  }
+  body+='<div class="card pad"><b>Today</b><div class="small muted">'+mine.length+' deliveries · '+rs(mine.length*62)+' earned · ★ '+r.rating+'</div></div>';
+  return header('rider')+'<main class="mobile-col"><div class="row" style="justify-content:space-between;flex-wrap:wrap"><h2>'+r.name+'</h2><span class="row"><label class="small muted" for="riderSel">Signed in as</label><select id="riderSel" class="sel">'+RIDERS.map(x=>'<option value="'+x.id+'" '+(x.id===me?'selected':'')+'>'+x.name+'</option>').join('')+'</select></span></div><div class="small muted">'+r.vehicle+'</div>'+body+'</main>';
+}
+
+/* ===================== Ops control tower ===================== */
+function viewOps(){
+  const all=S.orders, del=all.filter(o=>o.result==='delivered'), exp=del.filter(o=>!o.slot), within=exp.filter(o=>o.deliveredAt<=60), ver=all.filter(o=>o.verifiedAt!=null), rated=del.filter(o=>o.rating);
+  let acc=0, miss=0; Object.values(S.offerStats).forEach(s=>{acc+=s.accepted; miss+=s.missed;});
+  const k=(t,v,d)=>'<div class="card kpi"><span class="small muted">'+t+'</span><div class="v">'+v+'</div><div class="d muted">'+d+'</div></div>';
+  const kp='<div class="kpis">'+k('Orders',all.length,active().length+' in progress')+k('Delivered ≤ 60 min',exp.length?within.length+' / '+exp.length:'—','express orders · target 90%')+k('Avg delivery',del.length?Math.round(del.reduce((a,o)=>a+o.deliveredAt,0)/del.length)+' min':'—','budget 55 min')+k('Avg Rx decision',ver.length?(ver.reduce((a,o)=>a+o.verifiedAt,0)/ver.length).toFixed(1)+' min':'—','target 7 min')+k('Shop acceptance',acc+miss?Math.round(acc/(acc+miss)*100)+'%':'—',acc+' accepted · '+miss+' missed')+k('Substitutions',all.filter(o=>o.subApplied).length,'all approved by pharmacist')+k('Avg rating',rated.length?(rated.reduce((a,o)=>a+o.rating,0)/rated.length).toFixed(1)+' ★':'—',rated.length+' rated')+'</div>';
+  const risky=active().map(o=>({o,why:atRisk(o)})).filter(x=>x.why);
+  const riskCard='<div class="card pad col" style="'+(risky.length?'border:2px solid var(--amber)':'')+'"><div class="row" style="justify-content:space-between;flex-wrap:wrap"><b>At-risk orders'+(risky.length?' ('+risky.length+')':'')+'</b><span class="small muted">Orders that may miss the 60-minute promise, with three levers</span></div>'+(risky.length?risky.map(x=>'<div class="col" style="gap:6px;border-top:1px solid var(--line);padding-top:8px"><div class="row" style="justify-content:space-between;flex-wrap:wrap"><span><b class="mono">'+x.o.id+'</b> · '+esc(x.why)+'</span>'+statusChip(x.o)+'</div><div class="row" style="flex-wrap:wrap">'+rescueButtons(x.o)+'</div></div>').join(''):'<div class="small muted">None right now. An order appears here when a step runs over its time budget.</div>')+'</div>';
+  if(!local.opsSel||!getOrder(local.opsSel)) local.opsSel=(active()[0]||all[all.length-1]||{}).id||null;
+  const sel=local.opsSel?getOrder(local.opsSel):null;
+  const orders='<div class="table-wrap"><table><thead><tr><th>Order</th><th>Patient</th><th>Status</th><th>Shop</th><th>Rider</th><th class="num">Time</th></tr></thead><tbody>'+
+    (all.length?all.slice().reverse().map(o=>'<tr data-a="ops-sel" data-id="'+o.id+'" style="cursor:pointer;'+(o.id===local.opsSel?'background:var(--accent-soft)':'')+'"><td class="mono">'+o.id+'</td><td>'+esc(o.fields?(o.fields.patient||'—'):CUSTOMER.name)+'</td><td>'+statusChip(o)+'</td><td class="small">'+(o.partnerId?partner(o.partnerId).name:(o.status==='OFFERED_TO_PARTNER'?'<span class="muted">offered: '+partner(lastOffer(o).pid).name+'</span>':'—'))+'</td><td class="small">'+(o.riderId?rider(o.riderId).name:'—')+'</td><td class="num mono">'+(o.slot?'<span class="chip">'+esc(o.slot)+'</span> ':'')+'<span data-tick="elapsed" data-oid="'+o.id+'">'+fmt(simNow(o))+'</span></td></tr>').join(''):'<tr><td colspan="6" class="empty">No orders yet. Place one from the customer app.</td></tr>')+'</tbody></table></div>';
+  const ranked=sel&&sel.ranked;
+  const table=ranked?'<div class="table-wrap"><table><thead><tr><th>Shop</th><th class="num">km</th><th class="num">Basket /40</th><th class="num">Distance /25</th><th class="num">Accept /15</th><th class="num">Rating /10</th><th class="num">Shelf /10</th><th class="num">Score</th><th>Decision</th></tr></thead><tbody>'+
+    ranked.map(r=>{ const p=partner(r.pid), off=sel.offers.find(x=>x.pid===r.pid); const dec=sel.partnerId===r.pid?'<span class="chip ok">Assigned</span>':sel.subPid===r.pid&&sel.status==='SUBSTITUTION_PENDING'?'<span class="chip warn">Best · needs substitute</span>':off&&off.resp==='timeout'?'<span class="chip warn">Timed out</span>':off&&off.resp==='declined'?'<span class="chip warn">Declined</span>':off&&!off.resp?'<span class="chip warn">Offered</span>':r.eligible?'<span class="chip">'+(r.subs&&r.subs.length?'Eligible with substitute':'Eligible')+'</span>':'<span class="chip bad" title="'+esc(r.issues.join('; '))+'">'+esc(r.issues[0]||'')+'</span>';
+      return '<tr><td>'+p.name+'</td><td class="num">'+p.km+'</td><td class="num">'+r.b.basket.toFixed(0)+'</td><td class="num">'+r.b.distance.toFixed(1)+'</td><td class="num">'+r.b.accept.toFixed(1)+'</td><td class="num">'+r.b.rating.toFixed(1)+'</td><td class="num">'+r.b.shelf.toFixed(1)+'</td><td class="num"><b>'+(r.eligible?r.total.toFixed(1):'—')+'</b></td><td>'+dec+'</td></tr>'; }).join('')+'</tbody></table></div>':'<div class="empty">Shown once the matching engine has ranked shops for this order.</div>';
+  const network='<table><thead><tr><th>Shop</th><th>Status</th><th class="num">Accept score</th></tr></thead><tbody>'+PARTNERS.map(p=>'<tr><td>'+p.name+'</td><td>'+(p.km>4?'<span class="chip">Beyond 4 km</span>':S.online[p.id]?'<span class="chip ok">Online</span>':'<span class="chip bad">Offline</span>')+'</td><td class="num">'+Math.round(acceptRate(p.id)*100)+'%</td></tr>').join('')+'</tbody></table>';
+  const riders='<table><thead><tr><th>Rider</th><th>Status</th></tr></thead><tbody>'+RIDERS.map(r=>{ const t=active().find(o=>o.riderId===r.id); return '<tr><td>'+r.name+'</td><td>'+(t?'<span class="chip acc">On '+t.id+'</span>':S.riderOnline[r.id]?'<span class="chip ok">Free</span>':'<span class="chip">Offline</span>')+'</td></tr>'; }).join('')+'</tbody></table>';
+  const sp=S.clock.speed;
+  const tools='<div class="card pad col"><span class="eyebrow">Demo clock and data</span><div class="row" style="flex-wrap:wrap"><span class="small muted">Clock speed</span><div class="seg">'+[[1,'Real time'],[10,'10×'],[30,'30×']].map(x=>'<button data-a="speed" data-v="'+x[0]+'" aria-pressed="'+(sp===x[0])+'">'+x[1]+'</button>').join('')+'</div><button class="btn sm" data-a="pause">'+(S.clock.paused?'Resume clock':'Pause clock')+'</button><button class="btn sm danger" data-a="reset">Reset demo data</button></div><div class="small muted">Speed and pause apply to every open app. 10× makes the 3-minute shop timer last 18 seconds.</div></div>';
+  const detail=sel?(sel.done?'':'<div class="card pad col"><b>Rescue tools · '+sel.id+'</b><div class="row" style="flex-wrap:wrap">'+(rescueButtons(sel)||'<span class="small muted">No lever applies at this stage.</span>')+'</div><span class="small muted">Search radius now '+(sel.radius||4)+' km'+(sel.slot?' · scheduled '+esc(sel.slot):'')+'</span></div>')+'<div class="card pad col"><div class="row" style="justify-content:space-between"><span class="eyebrow">Journey · '+sel.id+'</span>'+statusChip(sel)+'</div>'+journey(sel)+'</div>'+phaseCard(sel):'';
+  return header('ops')+'<main class="desk col" style="gap:16px">'+kp+tools+riskCard+
+    '<div class="ops-grid"><div class="col" style="gap:16px"><div class="card pad col"><div class="row" style="justify-content:space-between;flex-wrap:wrap"><b>Live map · Andheri cluster</b><span class="small muted">Amber = offered · green = assigned · grey = offline</span></div><div class="map-wrap">'+mapSVG({labels:true})+'</div></div>'+
+    '<div class="card pad col"><b>All orders</b><span class="small muted">Click a row to see its journey and matching decision.</span>'+orders+'</div>'+
+    '<div class="card pad col"><b>Matching decision'+(sel?' · '+sel.id:'')+'</b><span class="small muted">Only online shops within the search radius (4 km, or 8 km if widened) that can fill the order are eligible · a same-salt substitute counts only if the doctor permits it · score = basket 40 + distance 25 + acceptance 15 + rating 10 + shelf life 10</span>'+table+'</div></div>'+
+    '<div class="col" style="gap:16px">'+detail+'<div class="card pad col"><b>Partner network</b>'+network+'</div><div class="card pad col"><b>Riders</b>'+riders+'</div></div></div></main>';
+}
+function atRisk(o){
+  if(o.done||o.slot) return null; const t=simNow(o), since=t-o.statusAt;
+  if(o.status==='PARTIAL_PENDING') return 'Some items are not in stock within '+(o.radius||4)+' km';
+  if(o.status==='OFFERED_TO_PARTNER'&&t-lastOffer(o).at>=1.5) return partner(lastOffer(o).pid).name+' is slow to respond';
+  if(o.status==='SUBSTITUTION_PENDING'&&since>=4) return 'Substitute decision has been pending over 4 min';
+  if(o.status==='RX_UNDER_REVIEW'&&since>=7) return 'Prescription check is over the 7-minute target';
+  if(o.status==='RX_QUERY') return 'Waiting for the customer to re-upload';
+  if(t+etaMin(o)>55) return 'Projected to take over 55 min';
+  return null;
+}
+function rescueButtons(o){
+  const b=[];
+  if((o.radius||4)<8&&['PARTIAL_PENDING','MATCHING','OFFERED_TO_PARTNER','SUBSTITUTION_PENDING'].includes(o.status)) b.push('<button class="btn sm" data-a="ops-widen" data-id="'+o.id+'">Widen search to 8 km</button>');
+  if(o.status==='OFFERED_TO_PARTNER'&&!lastOffer(o).called) b.push('<button class="btn sm" data-a="ops-call" data-id="'+o.id+'">Call '+partner(lastOffer(o).pid).name+'</button>');
+  if(!o.slot&&!o.done) b.push('<button class="btn sm" data-a="ops-slot" data-id="'+o.id+'">Offer a scheduled slot</button>');
+  return b.join('');
+}
+function phaseCard(o){
+  const budget=[['Order',3],['Verify + match',7],['Accept',3],['Pack',12],['Ride',30],['Buffer',5]], colors=['#7FA89B','#0A7A62','#C98516','#2F7FA8','#1F8A4E','#A7B4AF'];
+  const ticks=[0,3,10,13,25,55,60].map(v=>'<span style="left:'+(v/60*100)+'%">'+v+'</span>').join('');
+  const bseg=budget.map((b,i)=>'<div class="seg" style="width:'+(b[1]/60*100)+'%;background:'+colors[i]+'">'+(b[1]>=7?b[0]:'')+'</div>').join('');
+  const t=simNow(o), pts=[['Verify',0,o.needsRx?o.verifiedAt:0],['Match + accept',o.needsRx?o.verifiedAt:0,o.acceptedAt],['Pack',o.acceptedAt,o.readyAt],['Pickup',o.readyAt,o.pickedAt],['Ride',o.pickedAt,o.deliveredAt]];
+  let segs=''; pts.forEach((p,i)=>{ if(p[1]==null) return; const end=p[2]!=null?p[2]:(o.done?p[1]:t), w=Math.max(0,end-p[1])/60*100; if(w>0) segs+='<div class="seg" style="width:'+w+'%;background:'+colors[i+1]+'" title="'+p[0]+': '+(end-p[1]).toFixed(1)+' min">'+(w>9?p[0]:'')+'</div>'; });
+  return '<div class="card pad col"><span class="eyebrow">60-minute budget vs this order (min)</span><div style="position:relative"><div class="phasebar">'+bseg+'</div>'+(o.done?'':'<div class="phase-marker" data-tick="marker" data-oid="'+o.id+'" style="left:'+Math.min(100,t/60*100)+'%"></div>')+'</div><div class="phase-ticks">'+ticks+'</div><div class="phasebar">'+segs+'</div></div>';
+}
+
+/* ===================== Render loop ===================== */
+function render(){
+  const app=local.app;
+  const html=!app?viewLanding():{customer:viewCustomer,pharmacist:viewPharmacist,partner:viewPartner,rider:viewRider,ops:viewOps}[app]();
+  const ae=document.activeElement, id=ae&&ae.id, caret=ae&&ae.selectionStart!=null?ae.selectionStart:null;
+  const keep={}; document.querySelectorAll('[data-keep]').forEach(el=>{ if(el.id) keep[el.id]=el.type==='checkbox'?{c:el.checked}:{v:el.value}; });
+  document.getElementById('root').innerHTML=html;
+  Object.keys(keep).forEach(k=>{ const el=document.getElementById(k); if(!el||el.disabled) return; if('c' in keep[k]) el.checked=keep[k].c; else el.value=keep[k].v; });
+  if(id){ const el=document.getElementById(id); if(el&&(el.tagName==='INPUT'||el.tagName==='SELECT')){ el.focus(); if(caret!=null&&el.setSelectionRange&&(el.type==='text'||el.type==='search'||!el.type)){ try{el.setSelectionRange(caret,caret);}catch(e){} } } }
+  document.title=app?'Medi60 · '+APPS.find(a=>a.key===app).label:'Medi60 Prototype';
+}
+function tickUI(){
+  document.querySelectorAll('[data-tick]').forEach(el=>{
+    const o=getOrder(el.dataset.oid); if(!o) return; const k=el.dataset.tick, t=simNow(o);
+    if(k==='elapsed') el.textContent=fmt(t);
+    else if(k==='since') el.textContent=fmt(t-o.statusAt);
+    else if(k==='eta') el.textContent='~'+Math.max(1,Math.ceil(etaMin(o)));
+    else if(k==='marker') el.style.left=Math.min(100,t/60*100)+'%';
+    else if(k==='offer'||k==='ring'){ const off=lastOffer(o); if(!off) return; const rem=3-(t-off.at); if(k==='offer') el.textContent=fmt(Math.max(0,rem)); else el.style.setProperty('--p',Math.max(0,rem/3)); }
+  });
+  document.querySelectorAll('.rider-dot').forEach(g=>{ const o=getOrder(g.dataset.oid); if(o&&o.riderId){ const p=riderPos(o); g.setAttribute('transform','translate('+p.x+' '+p.y+')'); } });
+}
+let lastRiskSig='';
+function frame(){
+  systemTick();
+  if(local.app==='ops'){ const sig=active().map(o=>o.id+':'+(atRisk(o)||'')+':'+rescueButtons(o).length).join('|'); if(sig!==lastRiskSig){ lastRiskSig=sig; dirty=true; } }
+  if(dirty){ render(); dirty=false; } else tickUI();
+}
+
+/* ===================== Events ===================== */
+function toast(msg){ if(applyingRemote) return; const h=document.getElementById('toastHost'); if(!h) return; h.innerHTML='<div class="toast" role="status">'+esc(msg)+'</div>'; clearTimeout(toast._t); toast._t=setTimeout(()=>{ h.innerHTML=''; },3200); }
+function addToCart(med,qty,conf){ const ex=local.cart.find(c=>c.med===med); if(ex) ex.qty+=qty||1; else local.cart.push({med,qty:qty||1,conf:conf||null}); }
+function shrinkImage(file, cb){
+  const img=new Image(), url=URL.createObjectURL(file);
+  img.onload=()=>{ const max=900, k=Math.min(1,max/Math.max(img.width,img.height)); const c=document.createElement('canvas'); c.width=Math.round(img.width*k); c.height=Math.round(img.height*k); c.getContext('2d').drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(url); cb(c.toDataURL('image/jpeg',0.72)); };
+  img.onerror=()=>{ URL.revokeObjectURL(url); toast('That file could not be opened as an image. Try a JPG or PNG photo.'); };
+  img.src=url;
+}
+document.addEventListener('click',e=>{
+  const pt=e.target.closest('[data-ptab]'); if(pt){ local.shopTab=pt.dataset.ptab; dirty=true; return; }
+  const a=e.target.closest('[data-a]'); if(!a) return;
+  const act=a.dataset.a, id=a.dataset.id;
+  switch(act){
+    case 'c-home': local.custView='home'; local.trackId=null; break;
+    case 'c-upload': local.custView='upload'; local.trackId=null; break;
+    case 'c-cart': local.custView='cart'; break;
+    case 'c-track': local.trackId=id; break;
+    case 'c-sample': { const key=a.dataset.key; local.rxAttach={kind:'sample',key}; local.cart=local.cart.filter(c=>!MEDS[c.med].rx); SAMPLES[key].items.forEach(it=>addToCart(it.med,it.qty,it.conf)); local.custView='reading'; setTimeout(()=>{ if(local.custView==='reading'){ local.custView='cart'; dirty=true; } },1600); break; }
+    case 'cart-add': addToCart(a.dataset.med,1); toast(MEDS[a.dataset.med].brand+' added to cart'); break;
+    case 'cart-inc': local.cart[+a.dataset.i].qty++; break;
+    case 'cart-dec': { const c=local.cart[+a.dataset.i]; c.qty--; if(c.qty<=0) local.cart.splice(+a.dataset.i,1); break; }
+    case 'c-place': { const c=document.getElementById('consent1'); if(c&&!c.checked){ toast('Please consent to pharmacist review to continue'); return; } if(!local.cart.length) return; const oid=placeOrder(); local.cart=[]; local.rxAttach=null; local.custView='home'; local.trackId=oid; toast('Order '+oid+' placed · payment authorised'); break; }
+    case 'c-cancel': doAct('custCancel',local.trackId); break;
+    case 'c-subok': doAct('subConsent',local.trackId); break;
+    case 'c-subkeep': doAct('custKeep',local.trackId); break;
+    case 'c-subrm': doAct('custRemoveSub',local.trackId); break;
+    case 'c-reup': doAct('reupload',local.trackId,{rx:{kind:'sample',key:a.dataset.key}}); toast('New prescription sent to the pharmacist'); break;
+    case 'c-rate': doAct('rate',id,{v:+a.dataset.v}); break;
+    case 'c-reorder': { const o=getOrder(id); if(!o) break; local.cart=[]; o.items.forEach(it=>addToCart(it.med,it.qty)); local.rxAttach=null; local.trackId=null; local.custView='cart';
+      toast(o.items.some(it=>MEDS[it.med].rx)?'Items added. Attach a new prescription: each one can be dispensed only once.':'Items added to your cart'); break; }
+    case 'c-partial': doAct('partial',local.trackId); break;
+    case 'ph-sel': local.pharmSel=id; local.pharmPinned=true; break;
+    case 'ph-approve': doAct('approve',id); break;
+    case 'ph-reject': doAct('reject',id,Array.from(document.querySelectorAll('.rej:checked')).map(x=>x.value)); break;
+    case 'ph-subok': doAct('subApprove',id); break;
+    case 'ph-subno': doAct('subReject',id); break;
+    case 'ph-ask': { const q=document.getElementById('askQ-'+id); doAct('ask',id,{q:q?q.value:''}); break; }
+    case 'ops-widen': doAct('widen',id); break;
+    case 'ops-call': doAct('callShop',id); break;
+    case 'ops-slot': doAct('toSlot',id,{slot:'Today 6–8 pm'}); break;
+    case 'p-accept': doAct('accept',id,{shop:local.shop}); break;
+    case 'p-decline': doAct('decline',id,{shop:local.shop}); break;
+    case 'p-scan': doAct('scan',id,{i:+a.dataset.i,shop:local.shop}); break;
+    case 'p-ready': doAct('ready',id,{shop:local.shop}); break;
+    case 'inv-inc': exec('inv',{shop:local.shop,med:a.dataset.med,op:'inc'}); break;
+    case 'inv-dec': exec('inv',{shop:local.shop,med:a.dataset.med,op:'dec'}); break;
+    case 'inv-oos': exec('inv',{shop:local.shop,med:a.dataset.med,op:'oos'}); toast(MEDS[a.dataset.med].brand+' updated at '+partner(local.shop).name); break;
+    case 'r-arrive': doAct('arrive',id,{manual:true,rider:local.rider}); break;
+    case 'r-pickup': doAct('pickup',id,{rider:local.rider}); break;
+    case 'r-door': doAct('door',id,{manual:true,rider:local.rider}); break;
+    case 'r-deliver': doAct('deliver',id,{code:((document.getElementById('otpIn')||{}).value||'').trim(),rider:local.rider,newOtp:String(1000+Math.floor(Math.random()*9000))}); break;
+    case 'ops-sel': local.opsSel=id; break;
+    case 'r-switch': local.rider=a.dataset.r; break;
+    case 'speed': exec('speed',{v:+a.dataset.v,at:Date.now()}); break;
+    case 'pause': exec('pause',{v:!S.clock.paused,at:Date.now()}); break;
+    case 'reset': exec('reset'); local.trackId=null; local.pharmSel=null; local.opsSel=null; toast('Demo data reset in every open app'); break;
+    case 'noop': toast('Not part of this prototype'); break;
+  }
+  dirty=true;
+});
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.id==='search'){ local.search=t.value; const box=document.getElementById('results'); if(box) box.innerHTML=(local.custView!=='cart'&&!t.value)?'':catalogue(t.value); return; }
+  if(t.dataset&&t.dataset.field){ const oid=t.dataset.id, key=t.dataset.field, val=t.type==='checkbox'?t.checked:t.value;
+    execField({id:oid,key,val}); dirty=false;
+    const box=document.getElementById('pharmChecks'), o=getOrder(oid); if(box&&o) box.innerHTML=pharmChecks(o); }
+});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.id==='appSwitch'){ location.hash=t.value?'#'+t.value:'#home'; return; }
+  if(t.dataset&&t.dataset.seal){ doAct('seal',t.dataset.seal,{shop:local.shop,val:t.checked}); return; }
+  if(t.id==='allowSub'){ local.allowSub=t.checked; return; }
+  if(t.id==='slotSel'){ local.slot=t.value; dirty=true; return; }
+  if(t.id==='paySel'){ local.pay=t.value; dirty=true; return; }
+  if(t.id==='reupFile'&&t.files&&t.files[0]){ const f=t.files[0], oid=local.trackId; shrinkImage(f, data=>{ doAct('reupload',oid,{rx:{kind:'upload',data,name:f.name,size:f.size}}); toast('New prescription photo sent to the pharmacist'); dirty=true; }); return; }
+  if(t.id==='shopSel'){ local.shop=t.value; dirty=true; }
+  else if(t.id==='riderSel'){ local.rider=t.value; dirty=true; }
+  else if(t.id==='shopOnline'){ exec('shopOnline',{shop:local.shop,v:t.checked}); toast(partner(local.shop).name+' is now '+(t.checked?'online':'offline')); }
+  else if(t.id==='riderOnline'){ if(!t.checked&&active().some(o=>o.riderId===local.rider)){ t.checked=true; toast('Finish the current delivery before going offline'); return; } exec('riderOnline',{rider:local.rider,v:t.checked}); }
+  else if(t.dataset&&t.dataset.field&&t.tagName==='SELECT'){ const oid=t.dataset.id; execField({id:oid,key:t.dataset.field,val:t.value}); dirty=false; const box=document.getElementById('pharmChecks'), o=getOrder(oid); if(box&&o) box.innerHTML=pharmChecks(o); }
+  else if(t.id==='rxFile'&&t.files&&t.files[0]){ const f=t.files[0]; shrinkImage(f, data=>{ local.rxAttach={kind:'upload',data,name:f.name,size:f.size}; local.custView='cart'; toast('Prescription photo attached'); dirty=true; }); }
+});
+window.addEventListener('hashchange',()=>{ readHash(); window.scrollTo({top:0}); dirty=true; });
+frame(); setInterval(frame,200);
+})();
+
+</script>
+</body>
+</html>
